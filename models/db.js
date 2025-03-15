@@ -1,10 +1,15 @@
 const { Sequelize } = require("sequelize");
 
-// Создаем подключение к PostgreSQL
-const sequelize = new Sequelize("videosdk_db", "postgres", "mynewpassword", {
-  host: "localhost",
+// Подключаемся к PostgreSQL через Render
+const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: "postgres",
-  logging: false, // Убираем логи SQL-запросов (можно включить для отладки)
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false, // Нужно для Render
+    },
+  },
+  logging: false, // Отключаем логи SQL
 });
 
 module.exports = sequelize;
