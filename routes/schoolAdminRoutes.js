@@ -103,6 +103,27 @@ router.get("/users", async (req, res) => {
 });
 
 
+router.post("/check-email", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const user = await User.findOne({ where: { email } });
+
+    if (user) {
+      return res.json({ exists: true, role: user.role }); // Отдаём роль, если надо
+    } else {
+      return res.json({ exists: false });
+    }
+  } catch (error) {
+    console.error("❌ Ошибка проверки email:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 /* ==========================
   ✅ Получение списка учителей конкретной школы
 ========================== */
