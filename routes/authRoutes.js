@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.post("/register", register);
 router.post("/login", login);
-const express = require("express");
+
 const { auth } = require("../firebaseAdmin"); // ✅ Firebase Admin SDK
 
 // 🔹 Проверка токена Firebase
