@@ -281,8 +281,8 @@ app.get("/api/get-meeting/:className", async (req, res) => {
 // ✅ Генерация токена Video SDK
 app.get("/api/get-token", (req, res) => {
   try {
-    const API_KEY = process.env.API_KEY ||"1e5365dc-0fcc-4299-9602-7e1022ffeacc";
-    const SECRET_KEY = process.env.SECRET_KEY ||"e3eb23ffd330656ccb8ed6c17b68f00f04cb4e57f5ed7b2b1ce14948847fa85a";
+    const API_KEY = "90400612-174b-4704-ad94-0cf6297984d8";
+    const SECRET_KEY = "b91e87d50f5f3687eaea9fb13e634a999179d9d18a3fef4dadc21c3efaf2bd44"
 
     if (!API_KEY || !SECRET_KEY) {
       return res.status(500).json({ error: "Missing VideoSDK API keys" });
