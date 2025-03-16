@@ -14,6 +14,13 @@ const { OAuth2Client } = require("google-auth-library");
 
 dotenv.config();
 
+
+
+// Если нет в .env, берём дефолт
+const CLIENT_URL =
+  process.env.CLIENT_URL ||
+  "https://meet.tamamat.com";
+
 // Если нет в .env, берём дефолт
 const GOOGLE_CLIENT_ID =
   process.env.GOOGLE_CLIENT_ID ||
@@ -25,10 +32,10 @@ const GOOGLE_CLIENT_SECRET =
 
 // Аналогично для DATABASE_URL
 const DATABASE_URL =
-  process.env.DATABASE_URL || "https://backend-videosdk.onrender.com";
+  process.env.DATABASE_URL || "postgresql://videosdk_db_user:iiu5vDshdBNSIvKNFmCGIjH0FFlQOwC6@dpg-cvas2oaj1k6c7390q660-a.oregon-postgres.render.com/videosdk_db";
 
-// Теперь используем DATABASE_URL в REDIRECT_URI
-const REDIRECT_URI = `${DATABASE_URL}/api/auth/google/callback`;
+
+const REDIRECT_URI = `${CLIENT_URL}/api/auth/google/callback`;
 
 const JWT_SECRET = "your_jwt_secret"; // ❗️ Замените на безопасный ключ
 

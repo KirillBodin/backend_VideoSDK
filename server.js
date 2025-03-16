@@ -10,17 +10,17 @@ import verifyFirebaseToken from "./middlewares/authMiddleware.js";
 
 
 dotenv.config();
-
+const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
 
 const app = express();
 app.use(cookieParser()); // ✅ Обязательно для работы с cookies
-app.use(cors({ origin: "http://localhost:3000", credentials: true })); 
+app.use(cors({ origin: CLIENT_URL, credentials: true })); 
 
 
 // 🔹 Конфигурация CORS (чтобы клиент мог делать запросы)
 app.use(
   cors({
-      origin: "http://localhost:3000",
+      origin: CLIENT_URL,
       methods: "GET,POST,PUT,DELETE",
       allowedHeaders: "Content-Type,Authorization",
       credentials: true,
