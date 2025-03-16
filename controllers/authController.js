@@ -1,7 +1,7 @@
 // controllers/authController.js
 const dotenv = require("dotenv");
 dotenv.config(); // Загружаем переменные окружения
-import jwtDecode from "jwt-decode"; // Добавь этот импорт
+
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
