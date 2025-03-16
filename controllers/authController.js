@@ -198,7 +198,7 @@ exports.googleCallback = async (req, res) => {
     });
 
     // Можно редиректить на фронтенд
-    return res.redirect("http://localhost:3000");
+    return res.redirect("https://meet.tamamat.com");
   } catch (error) {
     console.error("❌ Ошибка входа через Google:", error);
     return res
@@ -218,11 +218,11 @@ exports.verifySession = async (req, res) => {
     }
 
     const decodedToken = jwt.verify(sessionToken, JWT_SECRET);
-    console.log("✅ Верифицированный пользователь:", decodedToken.email);
+    console.log("✅ Verified user:", decodedToken.email);
 
     return res.json({ success: true, user: decodedToken });
   } catch (error) {
-    console.error("❌ Ошибка проверки сессии:", error);
+    console.error("❌ Session check error:", error);
     return res.status(401).json({ success: false, error: "Invalid session" });
   }
 };
@@ -232,5 +232,5 @@ exports.verifySession = async (req, res) => {
  */
 exports.logout = (req, res) => {
   res.clearCookie("sessionToken");
-  res.redirect("http://localhost:3000");
+  res.redirect("https://meet.tamamat.com");
 };
