@@ -35,7 +35,7 @@ const DATABASE_URL =
   process.env.DATABASE_URL || "postgresql://videosdk_db_user:iiu5vDshdBNSIvKNFmCGIjH0FFlQOwC6@dpg-cvas2oaj1k6c7390q660-a.oregon-postgres.render.com/videosdk_db";
 
 
-const REDIRECT_URI = `${CLIENT_URL}/api/auth/google/callback`;
+const REDIRECT_URI = `http://localhost:5000/api/auth/google/callback`;
 
 const JWT_SECRET = "your_jwt_secret"; // ❗️ Замените на безопасный ключ
 
