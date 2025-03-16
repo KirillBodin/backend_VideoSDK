@@ -188,14 +188,18 @@ exports.googleCallback = async (req, res) => {
       JWT_SECRET,
       { expiresIn: "1h" }
     );
-
+    console.log("✅ Google User Payload:", payload);
+    console.log("🔹 Generated JWT Token:", serverToken);
+    
     // Записываем JWT в httpOnly cookie
     res.cookie("sessionToken", serverToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "Strict",
+      secure: true,
+      sameSite: "None", // 🌍 Для работы с кросс-доменными запросами
       maxAge: 60 * 60 * 1000, // 1 час
     });
+    
+console.log("🔹 Set-Cookie header:", res.getHeaders()["set-cookie"]);
 
     // Можно редиректить на фронтенд
     return res.redirect("https://meet.tamamat.com");
