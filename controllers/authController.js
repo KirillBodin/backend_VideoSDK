@@ -37,7 +37,7 @@ const DATABASE_URL =
 
 const REDIRECT_URI = "https://backend-videosdk.onrender.com/api/auth/google/callback";
 
-const JWT_SECRET = "your_jwt_secret"; // ❗️ Замените на безопасный ключ
+const JWT_SECRET = "your_jwt_secret"; 
 
 // Создаём OAuth2 клиент
 const oauth2Client = new google.auth.OAuth2(
