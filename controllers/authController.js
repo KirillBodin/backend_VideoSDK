@@ -1,6 +1,7 @@
 // controllers/authController.js
 const dotenv = require("dotenv");
 dotenv.config(); // Загружаем переменные окружения
+import jwtDecode from "jwt-decode"; // Добавь этот импорт
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -160,16 +161,14 @@ exports.googleCallback = async (req, res) => {
   try {
     const { code } = req.query;
     if (!code) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Authorization code is missing" });
+      return res.status(400).json({ success: false, error: "Authorization code is missing" });
     }
 
-    // Обмениваем code на токены
+    // Обмениваем код на токены
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
 
-    // Проверяем id_token (JWT от Google)
+    // Декодируем id_token от Google
     const ticket = await googleAuthClient.verifyIdToken({
       idToken: tokens.id_token,
       audience: GOOGLE_CLIENT_ID,
@@ -178,7 +177,7 @@ exports.googleCallback = async (req, res) => {
     const payload = ticket.getPayload();
     console.log("✅ Google User:", payload);
 
-    // Генерация собственного JWT (серверного)
+    // Генерируем серверный JWT
     const serverToken = jwt.sign(
       {
         email: payload.email,
@@ -188,40 +187,32 @@ exports.googleCallback = async (req, res) => {
       JWT_SECRET,
       { expiresIn: "1h" }
     );
-    console.log("✅ Google User Payload:", payload);
-    console.log("🔹 Generated JWT Token:", serverToken);
-    
-    // Записываем JWT в httpOnly cookie
-    res.cookie("sessionToken", serverToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "None", // 🌍 Для работы с кросс-доменными запросами
-      maxAge: 60 * 60 * 1000, // 1 час
-    });
-    
-console.log("🔹 Set-Cookie header:", res.getHeaders()["set-cookie"]);
 
-    // Можно редиректить на фронтенд
-    return res.redirect("https://meet.tamamat.com");
+    console.log("🔹 Generated JWT Token:", serverToken);
+
+    // 🔹 Редиректим на клиент с токеном в URL
+    return res.redirect(`https://meet.tamamat.com?token=${serverToken}`);
   } catch (error) {
     console.error("❌ Ошибка входа через Google:", error);
-    return res
-      .status(500)
-      .json({ success: false, error: "Google authentication failed" });
+    return res.status(500).json({ success: false, error: "Google authentication failed" });
   }
 };
+
+
 
 /**
  * Проверка сессии (JWT в cookie)
  */
 exports.verifySession = async (req, res) => {
   try {
-    const sessionToken = req.cookies.sessionToken;
-    if (!sessionToken) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ success: false, error: "Unauthorized" });
     }
 
-    const decodedToken = jwt.verify(sessionToken, JWT_SECRET);
+    const token = authHeader.split(" ")[1]; // Берем токен из заголовка
+    const decodedToken = jwt.verify(token, JWT_SECRET);
+
     console.log("✅ Verified user:", decodedToken.email);
 
     return res.json({ success: true, user: decodedToken });
@@ -230,6 +221,7 @@ exports.verifySession = async (req, res) => {
     return res.status(401).json({ success: false, error: "Invalid session" });
   }
 };
+
 
 /**
  * Выход (очищаем cookie)
