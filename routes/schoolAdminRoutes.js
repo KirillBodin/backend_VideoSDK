@@ -147,7 +147,7 @@ router.post("/", async (req, res) => {
   try {
     const { email, name, schoolName } = req.body;
     if (!email || !name || !schoolName) {
-      return res.status(400).json({ error: "All fields are required });
+      return res.status(400).json({ error: "All fields are required" });
     }
 
     let school = await School.findOne({ where: { name: schoolName } });
@@ -163,15 +163,13 @@ router.post("/", async (req, res) => {
       schoolId: school.id,
     });
 
-    res.status(201).json({ message: "✅ Admin created!", admin: newAdmin });
+    res.status(201).json({ message: "✅ Admin created!!!", admin: newAdmin });
   } catch (error) {
     res.status(500).json({ error: "Server error" });
   }
 });
 
-/* ==========================
-  ✅ Получение уроков учителя
-========================== */
+
 router.get("/:teacherId/lessons", async (req, res) => {
   try {
     const { teacherId } = req.params;
