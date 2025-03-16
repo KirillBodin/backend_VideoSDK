@@ -1,18 +1,44 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const jwt = require("jsonwebtoken");
-const { initDB, User, ClassMeeting } = require("./models");
-const authRoutes = require("./routes/authRoutes");
-const schoolAdminRoutes = require("./routes/schoolAdminRoutes");
+import dotenv from "dotenv";
+import express from "express";
+import cors from "cors";
+import jwt from "jsonwebtoken";
+import cookieParser from "cookie-parser";
+import { initDB, User, ClassMeeting } from "./models/index.js";
+import authRoutes from "./routes/authRoutes.js";
+import schoolAdminRoutes from "./routes/schoolAdminRoutes.js";
+import verifyFirebaseToken from "./middlewares/authMiddleware.js";
+
+
+dotenv.config();
+
 
 const app = express();
-app.use(express.json());
-app.use(cors());
+app.use(cookieParser()); // ✅ Обязательно для работы с cookies
+app.use(cors({ origin: "http://localhost:3000", credentials: true })); 
 
-// ✅ Подключаем роуты
+
+// 🔹 Конфигурация CORS (чтобы клиент мог делать запросы)
+app.use(
+  cors({
+      origin: "http://localhost:3000",
+      methods: "GET,POST,PUT,DELETE",
+      allowedHeaders: "Content-Type,Authorization",
+      credentials: true,
+  })
+);
+
+app.use(express.json());
+app.use(cookieParser());
+
+// 🔹 Подключаем маршруты авторизации
 app.use("/api/auth", authRoutes);
 app.use("/api/school-admins", schoolAdminRoutes);
+
+
+// ✅ Пример защищенного маршрута
+app.get("/api/protected", verifyFirebaseToken, (req, res) => {
+  res.json({ success: true, message: "Ты успешно прошел аутентификацию!", user: req.user });
+});
 
 // ✅ Получение всех учителей для данного администратора
 app.get("/api/:adminId/teachers", async (req, res) => {
@@ -221,10 +247,6 @@ app.get("/api/:adminId/lessons", async (req, res) => {
   }
 });
 
-
-
-
-// ✅ Удаление учителя и его уроков
 // ✅ Удаление учителя и всех его уроков
 app.delete("/api/:adminId/teachers/:teacherId", async (req, res) => {
   try {
@@ -370,7 +392,4 @@ app.listen(PORT, async () => {
   console.log(`🚀 Сервер запущен на http://localhost:${PORT}`);
 });
 
-// ✅ Проверка сервера
-app.get("/", (req, res) => {
-  res.send("Сервер работает!");
-});
+

@@ -1,32 +1,29 @@
+// routes/auth.js
 const express = require("express");
-const { login, register } = require("../controllers/authController");
-
 const router = express.Router();
+const cookieParser = require("cookie-parser");
 
+// Импорт всех методов из контроллера
+const {
+  register,
+  login,
+  getGoogleAuthUrl,
+  googleCallback,
+  verifySession,
+  logout,
+} = require("../controllers/authController");
+
+// Мидлварь cookieParser (если не подключена глобально в app.js)
+router.use(cookieParser());
+
+// Роуты локальной регистрации/логина
 router.post("/register", register);
 router.post("/login", login);
 
-const { auth } = require("../firebaseAdmin"); // ✅ Firebase Admin SDK
-
-// 🔹 Проверка токена Firebase
-router.post("/verify-token", async (req, res) => {
-  try {
-    const { token } = req.body;
-    if (!token) {
-      return res.status(400).json({ error: "Missing token" });
-    }
-
-    // 🔍 Проверяем токен
-    const decodedToken = await auth.verifyIdToken(token);
-    console.log("✅ Проверенный токен:", decodedToken);
-
-    res.json({ uid: decodedToken.uid, email: decodedToken.email });
-  } catch (error) {
-    console.error("❌ Ошибка проверки токена:", error);
-    res.status(401).json({ error: "Invalid token" });
-  }
-});
-
-module.exports = router;
+// Роуты Google OAuth
+router.get("/google/url", getGoogleAuthUrl);
+router.get("/google/callback", googleCallback);
+router.get("/verify-session", verifySession);
+router.get("/logout", logout);
 
 module.exports = router;
