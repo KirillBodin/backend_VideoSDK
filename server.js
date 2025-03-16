@@ -16,6 +16,13 @@ const app = express();
 app.use(cookieParser()); // ✅ Обязательно для работы с cookies
 app.use(cors({ origin: CLIENT_URL, credentials: true })); 
 
+app.use(
+  cors({
+    origin: "https://meet.tamamat.com", // ✅ Твой фронт
+    credentials: true, // ✅ Разрешаем куки
+  })
+);
+
 
 // 🔹 Конфигурация CORS (чтобы клиент мог делать запросы)
 app.use(
