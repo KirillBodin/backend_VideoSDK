@@ -9,18 +9,18 @@ exports.createMeeting = async (req, res) => {
       return res.status(400).json({ error: "className is required" });
     }
 
-    console.log(`[meetingsController] 🔍 Ищем встречу для класса: ${className}`);
+    console.log(`[meetingsController] 🔍 Looking for a class meeting: ${className}`);
     
     // Проверяем, существует ли встреча
     let meeting = await getMeetingFromDB(className);
     if (!meeting) {
-      console.log(`[meetingsController] ❌ Встреча не найдена, создаем новую...`);
+      console.log(`[meetingsController] ❌ Meeting not found, creating a new one...`);
       meeting = await createMeetingInVideoSDK(className);
     }
 
     return res.json({ meetingId: meeting.meetingId });
   } catch (error) {
-    console.error("[meetingsController] ❌ Ошибка:", error);
+    console.error("[meetingsController] ❌ error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -34,7 +34,7 @@ exports.getMeetingByClass = async (req, res) => {
       return res.status(400).json({ error: "className is required" });
     }
 
-    console.log(`[meetingsController] 🔍 Получаем meetingId для класса: ${className}`);
+    console.log(`[meetingsController] 🔍 We get meetingId for the class: ${className}`);
     
     const meeting = await getMeetingFromDB(className);
     
@@ -44,7 +44,7 @@ exports.getMeetingByClass = async (req, res) => {
 
     return res.json({ meetingId: meeting.meetingId });
   } catch (error) {
-    console.error("[meetingsController] ❌ Ошибка:", error);
+    console.error("[meetingsController] ❌ error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };

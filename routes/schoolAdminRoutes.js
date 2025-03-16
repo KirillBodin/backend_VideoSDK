@@ -15,7 +15,7 @@ router.get("/", async (req, res) => {
     });
     res.json(admins);
   } catch (error) {
-    res.status(500).json({ error: "Ошибка сервера" });
+    res.status(500).json({ error: "error" });
   }
 });
 
@@ -28,13 +28,13 @@ router.delete("/:schoolId/teachers/:teacherId", async (req, res) => {
     const teacher = await User.findOne({ where: { id: teacherId, schoolId, role: "teacher" } });
 
     if (!teacher) {
-      return res.status(404).json({ error: "Учитель не найден или не принадлежит данной школе" });
+      return res.status(404).json({ error: "The teacher was not found or does not belong to this school" });
     }
 
     await teacher.destroy();
-    res.json({ message: "✅ Учитель успешно удален" });
+    res.json({ message: "✅ The teacher has been successfully removed." });
   } catch (error) {
-    res.status(500).json({ error: "Ошибка сервера" });
+    res.status(500).json({ error: "error" });
   }
 });
 
@@ -47,25 +47,25 @@ router.post("/:adminId/teachers", async (req, res) => {
     const { email, name, password } = req.body;
 
     if (!email || !name || !password) {
-      return res.status(400).json({ error: "Все поля обязательны" });
+      return res.status(400).json({ error: "All fields are required" });
     }
 
     // Находим школу админа
     const admin = await User.findByPk(adminId);
     if (!admin || admin.role !== "admin") {
-      return res.status(403).json({ error: "Нет прав или администратор не найден" });
+      return res.status(403).json({ error: "No rights or administrator not found" });
     }
 
     const schoolId = admin.schoolId;
     if (!schoolId) {
-      return res.status(404).json({ error: "Администратор не привязан к школе" });
+      return res.status(404).json({ error: "The administrator is not tied to the school" });
     }
 
     // Добавляем учителя
     const newTeacher = await User.create({ email, password, name, role: "teacher", schoolId });
-    res.status(201).json({ message: "✅ Учитель добавлен!", teacher: newTeacher });
+    res.status(201).json({ message: "✅ Teacher added!", teacher: newTeacher });
   } catch (error) {
-    res.status(500).json({ error: "Ошибка сервера" });
+    res.status(500).json({ error: "error" });
   }
 });
 
@@ -81,7 +81,7 @@ router.get("/teachers", async (req, res) => {
     });
     res.json(teachers);
   } catch (error) {
-    res.status(500).json({ error: "Ошибка сервера" });
+    res.status(500).json({ error: "error" });
   }
 });
 
@@ -97,7 +97,7 @@ router.get("/users", async (req, res) => {
 
     res.json(users);
   } catch (error) {
-    console.error("❌ Ошибка получения пользователей:", error);
+    console.error("❌ Error getting users:", error);
     res.status(500).json({ error: "Ошибка сервера" });
   }
 });
@@ -119,7 +119,7 @@ router.post("/check-email", async (req, res) => {
       return res.json({ exists: false });
     }
   } catch (error) {
-    console.error("❌ Ошибка проверки email:", error);
+    console.error("❌ Email verification error:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -136,7 +136,7 @@ router.get("/:schoolId/teachers", async (req, res) => {
     });
     res.json(teachers);
   } catch (error) {
-    res.status(500).json({ error: "Ошибка сервера" });
+    res.status(500).json({ error: "Server error" });
   }
 });
 
@@ -147,7 +147,7 @@ router.post("/", async (req, res) => {
   try {
     const { email, name, schoolName } = req.body;
     if (!email || !name || !schoolName) {
-      return res.status(400).json({ error: "Все поля обязательны" });
+      return res.status(400).json({ error: "All fields are required });
     }
 
     let school = await School.findOne({ where: { name: schoolName } });
@@ -163,9 +163,9 @@ router.post("/", async (req, res) => {
       schoolId: school.id,
     });
 
-    res.status(201).json({ message: "✅ Админ создан!", admin: newAdmin });
+    res.status(201).json({ message: "✅ Admin created!", admin: newAdmin });
   } catch (error) {
-    res.status(500).json({ error: "Ошибка сервера" });
+    res.status(500).json({ error: "Server error" });
   }
 });
 
@@ -176,8 +176,8 @@ router.get("/:teacherId/lessons", async (req, res) => {
   try {
     const { teacherId } = req.params;
     const teacher = await User.findByPk(teacherId);
-    if (!teacher || teacher.role !== "teacher") {
-      return res.status(403).json({ error: "Учитель не найден или нет доступа" });
+    if (!teacher) {
+      return res.status(403).json({ error: "Teacher not found or no access" });
     }
 
     const lessons = await ClassMeeting.findAll({
@@ -187,7 +187,7 @@ router.get("/:teacherId/lessons", async (req, res) => {
 
     res.json(lessons);
   } catch (error) {
-    res.status(500).json({ error: "Ошибка сервера" });
+    res.status(500).json({ error: "Server error" });
   }
 });
 
@@ -200,12 +200,12 @@ router.delete("/lessons/:lessonId", async (req, res) => {
     const deletedLesson = await ClassMeeting.destroy({ where: { id: lessonId } });
 
     if (deletedLesson) {
-      res.json({ message: "✅ Урок успешно удалён!" });
+      res.json({ message: "✅ Lesson successfully deleted!" });
     } else {
-      res.status(404).json({ error: "Урок не найден" });
+      res.status(404).json({ error: "Lesson not found" });
     }
   } catch (error) {
-    res.status(500).json({ error: "Ошибка сервера" });
+    res.status(500).json({ error: "Server error" });
   }
 });
 

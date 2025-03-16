@@ -116,10 +116,10 @@ app.get("/api/:userId/lessons", async (req, res) => {
 
     // 🔍 Проверяем, существует ли пользователь (может быть как администратор, так и учитель)
     const user = await User.findByPk(userId);
-    console.log("[DEBUG] Найден пользователь:", user);
+    console.log("[DEBUG] User found:", user);
 
     if (!user) {
-      console.log(`[DEBUG] ❌ Пользователь с ID ${userId} не найден в БД`);
+      console.log(`[DEBUG] ❌ User with ID ${userId} not found in DB`);
       return res.status(404).json({ error: "User not found" });
     }
 
@@ -135,7 +135,7 @@ app.get("/api/:userId/lessons", async (req, res) => {
         attributes: ["id"], // Нам нужны только ID учителей
       });
 
-      console.log("[DEBUG] Найдено учителей:", teachers.length);
+      console.log("[DEBUG] Teachers found:", teachers.length);
 
       if (teachers.length === 0) {
         return res.json({ message: "No teachers found for this school" });
