@@ -59,11 +59,6 @@ export const createLesson = async (req, res) => {
     const teacher = await User.findOne({ where: { email: teacherEmail, role: "teacher" } });
     if (!teacher) return res.status(404).json({ error: "Teacher not found" });
 
-
-    if (!isAuthorized(req.user, teacher)) {
-      return res.status(403).json({ error: "Access denied" });
-    }
-
     const slug = meetingId;
     const classUrl = `${meetingId}/${teacher.name.split(" ").pop()}/${className.replace(/\s+/g, "_")}`;
     const newClass = await ClassMeeting.create({ className, meetingId, teacherId: teacher.id, teacherName: teacher.name, slug, classUrl });
