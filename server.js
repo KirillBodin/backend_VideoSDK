@@ -17,9 +17,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+app.set('trust proxy', 1);
 app.use(cookieParser());
 app.use(cors({ origin: "https://meet.tamamat.com", credentials: true, methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"] }));
 app.use(express.json());
+
 
 
 
