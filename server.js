@@ -15,15 +15,16 @@ import schoolAdminRoutes from "./routes/schoolAdminRoutes.js";
 import superAdminRoutes from "./routes/superAdminRoutes.js";
 import studentRoutes from "./routes/studentRoutes.js";
 
-dotenv.config();
 
-const app = express();
-const PORT = process.env.PORT || 5000;
+dotenv.config();
 
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+
+const app = express();
+const PORT = process.env.PORT || 5000;
 
 app.set("trust proxy", 1);
 app.use(cookieParser());
@@ -48,7 +49,7 @@ app.use("/api/student", studentRoutes);
 
 
 const buildPath = path.join(__dirname, "../build");
-app.use(express.static(buildPath));
+app.use(express.static(buildPath)); 
 
 
 app.get("*", (req, res) => {
