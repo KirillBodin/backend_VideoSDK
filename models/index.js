@@ -32,7 +32,7 @@ Student.belongsToMany(ClassMeeting, {
   onDelete: "CASCADE",
 });
 
-/
+
 const initDB = async () => {
   try {
     await sequelize.authenticate();
