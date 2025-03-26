@@ -2,15 +2,15 @@ import { Student, ClassMeeting } from "../models/index.js";
 import { Op } from "sequelize";
 
 export const checkStudentAccess = async (req, res) => {
-  const { slug, email } = req.body;
+  const { meetingId	, email } = req.body;
 
-  if (!slug || !email) {
-    return res.status(400).json({ error: "Missing slug or email" });
+  if (!meetingId	 || !email) {
+    return res.status(400).json({ error: "Missing meetingId or email" });
   }
 
   try {
     
-    const classMeeting = await ClassMeeting.findOne({ where: { slug } });
+    const classMeeting = await ClassMeeting.findOne({ where: { meetingId } });
     if (!classMeeting) {
       return res.status(404).json({ error: "Lesson not found" });
     }
