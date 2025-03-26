@@ -9,14 +9,13 @@ import { google } from "googleapis";
 import { OAuth2Client } from "google-auth-library";
 
 const GOOGLE_CLIENT_ID =
-  process.env.GOOGLE_CLIENT_ID ||
-  "876289977924-83dhsl9b24h60dotb6vajagvss0pfnbl.apps.googleusercontent.com";
+  process.env.GOOGLE_CLIENT_ID;
 
 const GOOGLE_CLIENT_SECRET =
-  process.env.GOOGLE_CLIENT_SECRET || "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";
+  process.env.GOOGLE_CLIENT_SECRET ;
 
-const REDIRECT_URI = "https://backendvideosdk-production.up.railway.app";
-const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
+const REDIRECT_URI = process.env.SERVER_URL;
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const oauth2Client = new google.auth.OAuth2(
   GOOGLE_CLIENT_ID,
