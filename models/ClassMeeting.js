@@ -1,3 +1,6 @@
+import { DataTypes } from "sequelize";
+import sequelize from "./db.js";
+
 const ClassMeeting = sequelize.define("ClassMeeting", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   className: { type: DataTypes.STRING, allowNull: false },
@@ -15,3 +18,6 @@ const ClassMeeting = sequelize.define("ClassMeeting", {
   teacherName: { type: DataTypes.STRING, allowNull: true },
   slug: { type: DataTypes.STRING, allowNull: true, unique: true },
 });
+
+
+export default ClassMeeting;
