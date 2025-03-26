@@ -149,7 +149,7 @@ export const googleCallback = async (req, res) => {
     });
 
     const payload = ticket.getPayload();
-    console.log("✅ Google User:", payload);
+ 
 
     const serverToken = jwt.sign(
       {
@@ -161,7 +161,7 @@ export const googleCallback = async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    console.log("🔹 Generated JWT Token:", serverToken);
+
 
     return res.redirect(`https://meet.tamamat.com?token=${serverToken}`);
   } catch (error) {
@@ -181,7 +181,7 @@ export const verifySession = async (req, res) => {
     const token = authHeader.split(" ")[1];
     const decodedToken = jwt.verify(token, JWT_SECRET);
 
-    console.log("✅ Verified user:", decodedToken.email);
+
 
     return res.json({ success: true, user: decodedToken });
   } catch (error) {

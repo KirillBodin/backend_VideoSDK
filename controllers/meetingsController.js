@@ -9,12 +9,12 @@ exports.createMeeting = async (req, res) => {
       return res.status(400).json({ error: "className is required" });
     }
 
-    console.log(`[meetingsController] 🔍 Looking for a class meeting: ${className}`);
+   
     
     
     let meeting = await getMeetingFromDB(className);
     if (!meeting) {
-      console.log(`[meetingsController] ❌ Meeting not found, creating a new one...`);
+     
       meeting = await createMeetingInVideoSDK(className);
     }
 
@@ -34,7 +34,7 @@ exports.getMeetingByClass = async (req, res) => {
       return res.status(400).json({ error: "className is required" });
     }
 
-    console.log(`[meetingsController] 🔍 We get meetingId for the class: ${className}`);
+
     
     const meeting = await getMeetingFromDB(className);
     

@@ -62,23 +62,22 @@ export const saveMeeting = async (req, res) => {
 export const getMeetingBySlugTeacherNameClass = async (req, res) => {
   try {
     const { slug, teacherName, className } = req.params;
-    console.log("Request to get meeting with parameters:", { slug, teacherName, className });
+
 
     const fullUrl = `${slug}/${teacherName}/${className}`;
-    console.log("Forming classUrl for search:", fullUrl);
+ 
 
     const meeting = await ClassMeeting.findOne({
       where: { classUrl: fullUrl },
     });
 
-    console.log("Found meeting:", meeting);
+  
 
     if (!meeting) {
-      console.log("Meeting not found");
+    
       return res.status(404).json({ error: "Meeting not found" });
     }
 
-    console.log("✅ Meeting found, sending data");
     return res.json({
       message: "✅ Meeting found",
       meeting,
