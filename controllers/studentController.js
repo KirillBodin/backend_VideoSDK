@@ -9,7 +9,7 @@ export const checkStudentAccess = async (req, res) => {
   }
 
   try {
-    const classMeeting = await ClassMeeting.findOne({ where: { slug } });
+    const classMeeting = await ClassMeeting.findOne({ where: { meetingId } });
     if (!classMeeting) {
       return res.status(404).json({ error: "Lesson not found" });
     }
