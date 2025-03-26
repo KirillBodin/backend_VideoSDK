@@ -52,15 +52,13 @@ export const deleteLesson = async (req, res) => {
 
 export const createLesson = async (req, res) => {
   try {
-    const { className, meetingId, teacherEmail, studentIds } = req.body;
-    if (!className || !meetingId || !teacherEmail) {
-      return res.status(400).json({ error: "Class name, meetingId and teacherEmail are required" });
+    const { className, slug, teacherEmail, studentIds } = req.body;
+    if (!className || !slug || !teacherEmail) {
+      return res.status(400).json({ error: "Class name, slug and teacherEmail are required" });
     }
 
     const teacher = await User.findOne({ where: { email: teacherEmail, role: "teacher" } });
     if (!teacher) return res.status(404).json({ error: "Teacher not found" });
-
-    
 
   
     const nameParts = teacher.name.includes("_")
@@ -73,7 +71,6 @@ export const createLesson = async (req, res) => {
 
     const newClass = await ClassMeeting.create({
       className,
-      meetingId,
       teacherId: teacher.id,
       teacherName: teacher.name,
       slug,
