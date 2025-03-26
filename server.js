@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
-import { fileURLToPath } from 'url';
+import { fileURLToPath } from "url";
 
 import { initDB } from "./models/index.js";
 import meetingRoutes from "./routes/meetingRoutes.js";
@@ -20,17 +20,20 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 
-app.set('trust proxy', 1);
+app.set("trust proxy", 1);
 app.use(cookieParser());
-app.use(cors({
-  origin: "https://meet.tamamat.com",
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-}));
+app.use(
+  cors({
+    origin: "https://meet.tamamat.com",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  })
+);
 app.use(express.json());
 
 
@@ -44,11 +47,12 @@ app.use("/api/super-admin", superAdminRoutes);
 app.use("/api/student", studentRoutes);
 
 
-app.use(express.static(path.join(__dirname, "../build")));
+const buildPath = path.join(__dirname, "../build");
+app.use(express.static(buildPath));
 
 
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../../build", "index.html"));
+  res.sendFile(path.join(buildPath, "index.html"));
 });
 
 
