@@ -14,7 +14,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import schoolAdminRoutes from "./routes/schoolAdminRoutes.js";
 import superAdminRoutes from "./routes/superAdminRoutes.js";
 import studentRoutes from "./routes/studentRoutes.js";
-import studentRoutes from "../../";
+
 
 
 dotenv.config();
