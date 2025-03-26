@@ -5,7 +5,7 @@ export const checkStudentAccess = async (req, res) => {
   const { meetingId, email } = req.body;
 
   if (!meetingId || !email) {
-    return res.status(400).json({ error: "Missing slug or email" });
+    return res.status(400).json({ error: "Missing meetingId or email" });
   }
 
   try {
