@@ -2,6 +2,9 @@ import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import path from "path";
+import { fileURLToPath } from 'url';
+
 import { initDB } from "./models/index.js";
 import meetingRoutes from "./routes/meetingRoutes.js";
 import tokenRoutes from "./routes/tokenRoutes.js";
@@ -17,15 +20,19 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+
 app.set('trust proxy', 1);
 app.use(cookieParser());
-app.use(cors({ origin: "https://meet.tamamat.com", credentials: true, methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"] }));
+app.use(cors({
+  origin: "https://meet.tamamat.com",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+}));
 app.use(express.json());
 
-
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../build', 'index.html'));
-});
 
 app.use("/api/admin", adminRoutes);
 app.use("/api", meetingRoutes);
@@ -35,6 +42,14 @@ app.use("/api", teacherRoutes);
 app.use("/api/school-admins", schoolAdminRoutes);
 app.use("/api/super-admin", superAdminRoutes);
 app.use("/api/student", studentRoutes);
+
+
+app.use(express.static(path.join(__dirname, "../build")));
+
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../../build", "index.html"));
+});
 
 
 app.listen(PORT, async () => {
