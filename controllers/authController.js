@@ -15,7 +15,7 @@ const GOOGLE_CLIENT_ID =
 const GOOGLE_CLIENT_SECRET =
   process.env.GOOGLE_CLIENT_SECRET || "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";
 
-const REDIRECT_URI = "https://backend-videosdk.onrender.com/api/auth/google/callback";
+const REDIRECT_URI = "https://backendvideosdk-production.up.railway.app";
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
 
 const oauth2Client = new google.auth.OAuth2(
