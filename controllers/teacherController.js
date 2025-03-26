@@ -340,7 +340,7 @@ export const getStudentsByLesson = async (req, res) => {
         {
           model: Student,
           as: "students",
-          through: { attributes: [] }, /
+          through: { attributes: [] }, 
         },
       ],
     });
