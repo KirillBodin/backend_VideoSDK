@@ -1,8 +1,8 @@
-const User = require("../models/User");
-const ClassMeeting = require("../models/ClassMeeting");
-const Student = require("../models/Student");
+import User from "../models/User.js";
+import ClassMeeting from "../models/ClassMeeting.js";
+import Student from "../models/Student.js";
 
-exports.getAllTeachers = async (req, res) => {
+export const getAllTeachers = async (req, res) => {
   try {
     const teachers = await User.findAll({ where: { role: "teacher" } });
     const teachersWithCounts = await Promise.all(
@@ -21,7 +21,7 @@ exports.getAllTeachers = async (req, res) => {
   }
 };
 
-exports.updateAdmin = async (req, res) => {
+export const updateAdmin = async (req, res) => {
   const { id } = req.params;
   const { name, email, password } = req.body;
 
@@ -50,7 +50,7 @@ exports.updateAdmin = async (req, res) => {
   }
 };
 
-exports.createAdmin = async (req, res) => {
+export const createAdmin = async (req, res) => {
   const { name, email, password } = req.body;
 
   try {
@@ -84,7 +84,7 @@ exports.createAdmin = async (req, res) => {
   }
 };
 
-exports.deleteAdmin = async (req, res) => {
+export const deleteAdmin = async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -105,7 +105,7 @@ exports.deleteAdmin = async (req, res) => {
   }
 };
 
-exports.createTeacher = async (req, res) => {
+export const createTeacher = async (req, res) => {
   try {
     const { teacherName, teacherEmail, teacherPassword } = req.body;
     if (!teacherName || !teacherEmail || !teacherPassword) {
@@ -130,7 +130,7 @@ exports.createTeacher = async (req, res) => {
   }
 };
 
-exports.deleteTeacher = async (req, res) => {
+export const deleteTeacher = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -152,7 +152,7 @@ exports.deleteTeacher = async (req, res) => {
   }
 };
 
-exports.getAllClasses = async (req, res) => {
+export const getAllClasses = async (req, res) => {
   try {
     const classes = await ClassMeeting.findAll();
     const classesWithCounts = await Promise.all(
@@ -181,7 +181,7 @@ exports.getAllClasses = async (req, res) => {
   }
 };
 
-exports.createClass = async (req, res) => {
+export const createClass = async (req, res) => {
   try {
     const { className, teacherId } = req.body;
     if (!className || !teacherId) {
@@ -200,7 +200,7 @@ exports.createClass = async (req, res) => {
   }
 };
 
-exports.deleteClass = async (req, res) => {
+export const deleteClass = async (req, res) => {
   try {
     const { id } = req.params;
     const classInstance = await ClassMeeting.findByPk(id);
@@ -219,7 +219,7 @@ exports.deleteClass = async (req, res) => {
   }
 };
 
-exports.getAllStudents = async (req, res) => {
+export const getAllStudents = async (req, res) => {
   try {
     const students = await Student.findAll({
       include: [
@@ -244,7 +244,7 @@ exports.getAllStudents = async (req, res) => {
   }
 };
 
-exports.createStudent = async (req, res) => {
+export const createStudent = async (req, res) => {
   try {
     const { studentName, studentEmail, classId } = req.body;
     if (!studentName || !studentEmail || !classId) {
@@ -272,7 +272,7 @@ exports.createStudent = async (req, res) => {
   }
 };
 
-exports.deleteStudent = async (req, res) => {
+export const deleteStudent = async (req, res) => {
   try {
     const { id } = req.params;
     const student = await Student.findByPk(id);
@@ -292,7 +292,7 @@ exports.deleteStudent = async (req, res) => {
   }
 };
 
-exports.getAllAdmins = async (req, res) => {
+export const getAllAdmins = async (req, res) => {
   try {
     if (req.user.role !== "superadmin") {
       return res.status(403).json({ error: "Access denied" });

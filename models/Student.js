@@ -1,5 +1,5 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("./db");
+import { DataTypes } from "sequelize";
+import sequelize from "./db.js";
 
 const Student = sequelize.define("Student", {
   id: {
@@ -18,7 +18,7 @@ const Student = sequelize.define("Student", {
   },
   teacherId: {
     type: DataTypes.INTEGER,
-    allowNull: false, 
+    allowNull: false,
     references: {
       model: "Users",
       key: "id",
@@ -27,4 +27,4 @@ const Student = sequelize.define("Student", {
   },
 });
 
-module.exports = Student;
+export default Student;

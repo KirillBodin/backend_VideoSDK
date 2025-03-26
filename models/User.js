@@ -1,5 +1,5 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("./db");
+import { DataTypes } from "sequelize";
+import sequelize from "./db.js";
 
 const User = sequelize.define("User", {
   id: {
@@ -21,12 +21,12 @@ const User = sequelize.define("User", {
     allowNull: false,
   },
   role: {
-    type: DataTypes.ENUM("superadmin","admin", "teacher"),
+    type: DataTypes.ENUM("superadmin", "admin", "teacher"),
     allowNull: false,
   },
   adminId: {
     type: DataTypes.INTEGER,
-    allowNull: true, 
+    allowNull: true,
     references: {
       model: "Users",
       key: "id",
@@ -35,4 +35,4 @@ const User = sequelize.define("User", {
   },
 });
 
-module.exports = User;
+export default User;

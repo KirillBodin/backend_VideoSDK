@@ -1,31 +1,22 @@
-
-const dotenv = require("dotenv");
+import dotenv from "dotenv";
 dotenv.config(); 
 
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const { User } = require("../models");
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { User } from "../models/index.js";
 
-const { google } = require("googleapis");
-const { OAuth2Client } = require("google-auth-library");
-
-dotenv.config();
-
+import { google } from "googleapis";
+import { OAuth2Client } from "google-auth-library";
 
 const GOOGLE_CLIENT_ID =
   process.env.GOOGLE_CLIENT_ID ||
   "876289977924-83dhsl9b24h60dotb6vajagvss0pfnbl.apps.googleusercontent.com";
 
-
 const GOOGLE_CLIENT_SECRET =
   process.env.GOOGLE_CLIENT_SECRET || "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";
 
-
-
 const REDIRECT_URI = "https://backend-videosdk.onrender.com/api/auth/google/callback";
-
-const JWT_SECRET = "your_jwt_secret"; 
-
+const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
 
 const oauth2Client = new google.auth.OAuth2(
   GOOGLE_CLIENT_ID,
@@ -34,8 +25,8 @@ const oauth2Client = new google.auth.OAuth2(
 );
 const googleAuthClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
-
-exports.register = async (req, res) => {
+// Register
+export const register = async (req, res) => {
   try {
     const { email, password, role } = req.body;
 
@@ -62,8 +53,8 @@ exports.register = async (req, res) => {
   }
 };
 
-
-exports.login = async (req, res) => {
+// Login
+export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -108,21 +99,15 @@ exports.login = async (req, res) => {
       adminId,
     };
 
-    const token = jwt.sign(
-      payload,
-      process.env.JWT_SECRET || "defaultsecret",
-      { expiresIn: "1h" }
-    );
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "1h" });
 
-    
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", 
+      secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 60 * 60 * 1000, // 1 час
+      maxAge: 60 * 60 * 1000,
     });
 
-    
     return res.json({
       message: "Login successful",
       token,
@@ -138,8 +123,8 @@ exports.login = async (req, res) => {
   }
 };
 
-
-exports.getGoogleAuthUrl = (req, res) => {
+// Google OAuth - Get Auth URL
+export const getGoogleAuthUrl = (req, res) => {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: "offline",
     prompt: "consent",
@@ -148,19 +133,17 @@ exports.getGoogleAuthUrl = (req, res) => {
   res.json({ authUrl });
 };
 
-
-exports.googleCallback = async (req, res) => {
+// Google OAuth Callback
+export const googleCallback = async (req, res) => {
   try {
     const { code } = req.query;
     if (!code) {
       return res.status(400).json({ success: false, error: "Authorization code is missing" });
     }
 
-   
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
 
-  
     const ticket = await googleAuthClient.verifyIdToken({
       idToken: tokens.id_token,
       audience: GOOGLE_CLIENT_ID,
@@ -169,7 +152,6 @@ exports.googleCallback = async (req, res) => {
     const payload = ticket.getPayload();
     console.log("✅ Google User:", payload);
 
-    
     const serverToken = jwt.sign(
       {
         email: payload.email,
@@ -182,25 +164,22 @@ exports.googleCallback = async (req, res) => {
 
     console.log("🔹 Generated JWT Token:", serverToken);
 
-    
     return res.redirect(`https://meet.tamamat.com?token=${serverToken}`);
   } catch (error) {
-    console.error("❌ Errir:", error);
+    console.error("❌ Error:", error);
     return res.status(500).json({ success: false, error: "Google authentication failed" });
   }
 };
 
-
-
-
-exports.verifySession = async (req, res) => {
+// Session check
+export const verifySession = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ success: false, error: "Unauthorized" });
     }
 
-    const token = authHeader.split(" ")[1]; 
+    const token = authHeader.split(" ")[1];
     const decodedToken = jwt.verify(token, JWT_SECRET);
 
     console.log("✅ Verified user:", decodedToken.email);
@@ -212,9 +191,8 @@ exports.verifySession = async (req, res) => {
   }
 };
 
-
-
-exports.logout = (req, res) => {
+// Logout
+export const logout = (req, res) => {
   res.clearCookie("sessionToken");
   res.redirect("https://meet.tamamat.com");
 };

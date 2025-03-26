@@ -1,5 +1,5 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("./db");
+import { DataTypes } from "sequelize";
+import sequelize from "./db.js";
 
 const ClassMeeting = sequelize.define("ClassMeeting", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -15,17 +15,8 @@ const ClassMeeting = sequelize.define("ClassMeeting", {
     onDelete: "CASCADE",
   },
   classUrl: { type: DataTypes.STRING, allowNull: true },
-
-
-  teacherName: {
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
-  slug: {
-    type: DataTypes.STRING,
-    allowNull: true,
-    unique: true,
-  },
+  teacherName: { type: DataTypes.STRING, allowNull: true },
+  slug: { type: DataTypes.STRING, allowNull: true, unique: true },
 });
 
-module.exports = ClassMeeting;
+export default ClassMeeting;

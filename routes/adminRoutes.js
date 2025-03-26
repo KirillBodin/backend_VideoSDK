@@ -1,9 +1,18 @@
-const express = require("express");
-const { getAdminTeachers, getAdminStudents, getAdminClasses,createTeacherByAdmin,createClassByAdmin,createStudentByAdmin
-    ,deleteTeacherByAdmin,deleteClassByAdmin,deleteStudentByAdmin
- } = require("../controllers/adminController");
- const { authenticate } = require("../middlewares/authenticate");
- const { authorize } = require("../middlewares/authorize");
+import express from "express";
+import {
+  getAdminTeachers,
+  getAdminStudents,
+  getAdminClasses,
+  createTeacherByAdmin,
+  createClassByAdmin,
+  createStudentByAdmin,
+  deleteTeacherByAdmin,
+  deleteClassByAdmin,
+  deleteStudentByAdmin
+} from "../controllers/adminController.js";
+
+import { authenticate } from "../middlewares/authenticate.js";
+import { authorize } from "../middlewares/authorize.js";
 
 const router = express.Router();
 
@@ -27,4 +36,5 @@ router.post("/:adminId/students", authenticate,authorize(["admin", "superadmin"]
 router.delete("/classes/:classId", authenticate,authorize(["admin", "superadmin"]),deleteClassByAdmin);
 router.delete("/students/:studentId", authenticate,authorize(["admin", "superadmin"]),deleteStudentByAdmin);
 
-module.exports = router;
+export default router; // ✅ ES-модуль
+
