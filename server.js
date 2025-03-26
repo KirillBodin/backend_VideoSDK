@@ -23,7 +23,9 @@ app.use(cors({ origin: "https://meet.tamamat.com", credentials: true, methods: [
 app.use(express.json());
 
 
-
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../build', 'index.html'));
+});
 
 app.use("/api/admin", adminRoutes);
 app.use("/api", meetingRoutes);
