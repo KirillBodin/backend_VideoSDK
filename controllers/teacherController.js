@@ -56,12 +56,29 @@ export const createLesson = async (req, res) => {
     if (!className || !meetingId || !teacherEmail) {
       return res.status(400).json({ error: "Class name, meetingId and teacherEmail are required" });
     }
+
     const teacher = await User.findOne({ where: { email: teacherEmail, role: "teacher" } });
     if (!teacher) return res.status(404).json({ error: "Teacher not found" });
 
-    const slug = meetingId;
-    const classUrl = `${meetingId}/${teacher.name.split(" ").pop()}/${className.replace(/\s+/g, "_")}`;
-    const newClass = await ClassMeeting.create({ className, meetingId, teacherId: teacher.id, teacherName: teacher.name, slug, classUrl });
+    
+
+  
+    const nameParts = teacher.name.includes("_")
+      ? teacher.name.split("_")
+      : teacher.name.split(" ");
+    const teacherIdentifier = nameParts[1] || nameParts[0]; 
+
+    const formattedClassName = className.trim().replace(/\s+/g, "_");
+    const classUrl = `${slug}/${teacherIdentifier}/${formattedClassName}`;
+
+    const newClass = await ClassMeeting.create({
+      className,
+      meetingId,
+      teacherId: teacher.id,
+      teacherName: teacher.name,
+      slug,
+      classUrl,
+    });
 
     if (Array.isArray(studentIds) && studentIds.length > 0) {
       const students = await Student.findAll({ where: { id: studentIds } });
