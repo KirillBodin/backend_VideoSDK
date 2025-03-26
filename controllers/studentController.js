@@ -2,9 +2,9 @@ import { Student, ClassMeeting } from "../models/index.js";
 import { Op } from "sequelize";
 
 export const checkStudentAccess = async (req, res) => {
-  const { slug, email } = req.body;
+  const { meetingId, email } = req.body;
 
-  if (!slug || !email) {
+  if (!meetingId || !email) {
     return res.status(400).json({ error: "Missing slug or email" });
   }
 
