@@ -1,25 +1,49 @@
-const sequelize = require("./db"); // Подключаем Sequelize
+const sequelize = require("./db"); 
 const User = require("./User");
-const School = require("./School");
-const ClassMeeting = require("./ClassMeeting"); // Импортируем модель
+const ClassMeeting = require("./ClassMeeting");
+const Student = require("./Student");
 
-// 🔹 Определяем связи между таблицами
-User.belongsTo(School, { foreignKey: "schoolId", onDelete: "CASCADE" });
-School.hasMany(User, { foreignKey: "schoolId" });
 
-ClassMeeting.belongsTo(User, { foreignKey: "teacherId", onDelete: "CASCADE" }); // Урок принадлежит учителю
-User.hasMany(ClassMeeting, { foreignKey: "teacherId" }); // Учитель может иметь много уроков
+User.hasMany(User, { foreignKey: "adminId", as: "teachers" });
+User.belongsTo(User, { foreignKey: "adminId", as: "admin" });
+
+
+User.hasMany(ClassMeeting, { foreignKey: "teacherId", as: "lessons" });
+ClassMeeting.belongsTo(User, { foreignKey: "teacherId", as: "teacher" });
+
+
+User.hasMany(Student, { foreignKey: "teacherId", as: "students" });
+Student.belongsTo(User, { foreignKey: "teacherId", as: "teacher" });
+
+
+ClassMeeting.belongsToMany(Student, {
+    through: "ClassStudent",
+    foreignKey: "classId",
+    otherKey: "studentId",
+    as: "students", 
+    onDelete: "CASCADE",
+});
+
+Student.belongsToMany(ClassMeeting, {
+    through: "ClassStudent",
+    foreignKey: "studentId",
+    otherKey: "classId",
+    as: "classes", 
+    onDelete: "CASCADE",
+});
+
 
 const initDB = async () => {
-  try {
-    await sequelize.authenticate();
-    console.log("✅ Подключение к БД успешно!");
+    try {
+        await sequelize.authenticate();
+        console.log("✅ Подключение к БД успешно!");
 
-    await sequelize.sync({ alter: true }); // Синхронизация с базой данных
-    console.log("✅ База данных синхронизирована!");
-  } catch (error) {
-    console.error("❌ Ошибка подключения:", error);
-  }
+        await sequelize.sync({ alter: true });
+        console.log("✅ База данных синхронизирована!");
+    } catch (error) {
+        console.error("❌ Ошибка подключения:", error);
+    }
 };
 
-module.exports = { sequelize, initDB, User, School, ClassMeeting };
+
+module.exports = { sequelize, initDB, User, ClassMeeting, Student };

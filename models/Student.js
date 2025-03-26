@@ -1,7 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("./db");
 
-const User = sequelize.define("User", {
+const Student = sequelize.define("Student", {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
@@ -16,23 +16,15 @@ const User = sequelize.define("User", {
     allowNull: false,
     unique: true,
   },
-  password: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  role: {
-    type: DataTypes.ENUM("superadmin","admin", "teacher"),
-    allowNull: false,
-  },
-  adminId: {
+  teacherId: {
     type: DataTypes.INTEGER,
-    allowNull: true, 
+    allowNull: false, 
     references: {
       model: "Users",
       key: "id",
     },
-    onDelete: "SET NULL",
+    onDelete: "CASCADE",
   },
 });
 
-module.exports = User;
+module.exports = Student;

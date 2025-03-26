@@ -1,7 +1,6 @@
-// controllers/authController.js
-const dotenv = require("dotenv");
-dotenv.config(); // Загружаем переменные окружения
 
+const dotenv = require("dotenv");
+dotenv.config(); 
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -10,37 +9,24 @@ const { User } = require("../models");
 const { google } = require("googleapis");
 const { OAuth2Client } = require("google-auth-library");
 
-
-
-
 dotenv.config();
 
 
-
-// Если нет в .env, берём дефолт
-const CLIENT_URL =
-  process.env.CLIENT_URL ||
-  "https://meet.tamamat.com";
-
-// Если нет в .env, берём дефолт
 const GOOGLE_CLIENT_ID =
   process.env.GOOGLE_CLIENT_ID ||
   "876289977924-83dhsl9b24h60dotb6vajagvss0pfnbl.apps.googleusercontent.com";
 
-// Если нет в .env, подставляем дефолт
+
 const GOOGLE_CLIENT_SECRET =
   process.env.GOOGLE_CLIENT_SECRET || "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";
 
-// Аналогично для DATABASE_URL
-const DATABASE_URL =
-  process.env.DATABASE_URL || "postgresql://videosdk_db_user:iiu5vDshdBNSIvKNFmCGIjH0FFlQOwC6@dpg-cvas2oaj1k6c7390q660-a.oregon-postgres.render.com/videosdk_db";
 
 
 const REDIRECT_URI = "https://backend-videosdk.onrender.com/api/auth/google/callback";
 
 const JWT_SECRET = "your_jwt_secret"; 
 
-// Создаём OAuth2 клиент
+
 const oauth2Client = new google.auth.OAuth2(
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
@@ -48,9 +34,7 @@ const oauth2Client = new google.auth.OAuth2(
 );
 const googleAuthClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
-/**
- * Регистрация пользователя
- */
+
 exports.register = async (req, res) => {
   try {
     const { email, password, role } = req.body;
@@ -73,14 +57,12 @@ exports.register = async (req, res) => {
       .status(201)
       .json({ message: "User registered successfully", user });
   } catch (error) {
-    console.error("❌ Ошибка регистрации:", error);
+    console.error("❌ Error:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
 
-/**
- * Логин пользователя (локальная аутентификация)
- */
+
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -101,7 +83,6 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // Пример: вы можете добавить разные данные в Payload токена
     let schoolId = null;
     let name = null;
     let teacherId = null;
@@ -120,13 +101,28 @@ exports.login = async (req, res) => {
       name = user.name?.replace(/\s+/g, "_") || null;
     }
 
-    // Генерация JWT
+    const payload = {
+      id: user.id,
+      role: user.role,
+      teacherId,
+      adminId,
+    };
+
     const token = jwt.sign(
-      { id: user.id, role: user.role, teacherId, adminId },
-      process.env.JWT_SECRET || JWT_SECRET, // Можете брать из .env
+      payload,
+      process.env.JWT_SECRET || "defaultsecret",
       { expiresIn: "1h" }
     );
 
+    
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", 
+      sameSite: "strict",
+      maxAge: 60 * 60 * 1000, // 1 час
+    });
+
+    
     return res.json({
       message: "Login successful",
       token,
@@ -142,9 +138,7 @@ exports.login = async (req, res) => {
   }
 };
 
-/**
- * Генерация Google OAuth URL
- */
+
 exports.getGoogleAuthUrl = (req, res) => {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: "offline",
@@ -154,9 +148,7 @@ exports.getGoogleAuthUrl = (req, res) => {
   res.json({ authUrl });
 };
 
-/**
- * Callback после успешного входа через Google
- */
+
 exports.googleCallback = async (req, res) => {
   try {
     const { code } = req.query;
@@ -164,11 +156,11 @@ exports.googleCallback = async (req, res) => {
       return res.status(400).json({ success: false, error: "Authorization code is missing" });
     }
 
-    // Обмениваем код на токены
+   
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
 
-    // Декодируем id_token от Google
+  
     const ticket = await googleAuthClient.verifyIdToken({
       idToken: tokens.id_token,
       audience: GOOGLE_CLIENT_ID,
@@ -177,7 +169,7 @@ exports.googleCallback = async (req, res) => {
     const payload = ticket.getPayload();
     console.log("✅ Google User:", payload);
 
-    // Генерируем серверный JWT
+    
     const serverToken = jwt.sign(
       {
         email: payload.email,
@@ -190,19 +182,17 @@ exports.googleCallback = async (req, res) => {
 
     console.log("🔹 Generated JWT Token:", serverToken);
 
-    // 🔹 Редиректим на клиент с токеном в URL
+    
     return res.redirect(`https://meet.tamamat.com?token=${serverToken}`);
   } catch (error) {
-    console.error("❌ Ошибка входа через Google:", error);
+    console.error("❌ Errir:", error);
     return res.status(500).json({ success: false, error: "Google authentication failed" });
   }
 };
 
 
 
-/**
- * Проверка сессии (JWT в cookie)
- */
+
 exports.verifySession = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -210,7 +200,7 @@ exports.verifySession = async (req, res) => {
       return res.status(401).json({ success: false, error: "Unauthorized" });
     }
 
-    const token = authHeader.split(" ")[1]; // Берем токен из заголовка
+    const token = authHeader.split(" ")[1]; 
     const decodedToken = jwt.verify(token, JWT_SECRET);
 
     console.log("✅ Verified user:", decodedToken.email);
@@ -223,9 +213,7 @@ exports.verifySession = async (req, res) => {
 };
 
 
-/**
- * Выход (очищаем cookie)
- */
+
 exports.logout = (req, res) => {
   res.clearCookie("sessionToken");
   res.redirect("https://meet.tamamat.com");

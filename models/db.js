@@ -2,18 +2,12 @@ const { Sequelize } = require("sequelize");
 const dotenv = require("dotenv");
 dotenv.config();
 
-const DATABASE_URL = process.env.DATABASE_URL || "postgresql://videosdk_db_user:iiu5vDshdBNSIvKNFmCGIjH0FFlQOwC6@dpg-cvas2oaj1k6c7390q660-a.oregon-postgres.render.com/videosdk_db";
-
-// Подключаемся к PostgreSQL через Render
+//const DATABASE_URL = "postgresql://videosdk_db_user:iiu5vDshdBNSIvKNFmCGIjH0FFlQOwC6@dpg-cvas2oaj1k6c7390q660-a.oregon-postgres.render.com/videosdk_db";
+const DATABASE_URL = "postgres://postgres:kere@localhost:5432/videosdk_db";
 const sequelize = new Sequelize(DATABASE_URL, {
   dialect: "postgres",
-  dialectOptions: {
-    ssl: {
-      require: true,
-      rejectUnauthorized: false, // Нужно для Render
-    },
-  },
-  logging: false, // Отключаем логи SQL
+  logging: false,
 });
+
 
 module.exports = sequelize;

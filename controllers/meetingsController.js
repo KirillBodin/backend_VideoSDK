@@ -1,6 +1,6 @@
 const { createMeetingInVideoSDK, getMeetingFromDB } = require("../services/meetingService");
 
-// 📌 Функция для создания встречи
+
 exports.createMeeting = async (req, res) => {
   try {
     const { className } = req.body;
@@ -11,7 +11,7 @@ exports.createMeeting = async (req, res) => {
 
     console.log(`[meetingsController] 🔍 Looking for a class meeting: ${className}`);
     
-    // Проверяем, существует ли встреча
+    
     let meeting = await getMeetingFromDB(className);
     if (!meeting) {
       console.log(`[meetingsController] ❌ Meeting not found, creating a new one...`);
@@ -25,7 +25,7 @@ exports.createMeeting = async (req, res) => {
   }
 };
 
-// 📌 Функция для получения `meetingId` по `className`
+
 exports.getMeetingByClass = async (req, res) => {
   try {
     const { className } = req.params;

@@ -1,9 +1,8 @@
-// routes/auth.js
+
 const express = require("express");
 const router = express.Router();
 const cookieParser = require("cookie-parser");
-
-// Импорт всех методов из контроллера
+const { loginRateLimiter } = require("../middlewares/rateLimiter.js");
 const {
   register,
   login,
@@ -13,14 +12,13 @@ const {
   logout,
 } = require("../controllers/authController");
 
-// Мидлварь cookieParser (если не подключена глобально в app.js)
 router.use(cookieParser());
 
-// Роуты локальной регистрации/логина
-router.post("/register", register);
-router.post("/login", login);
 
-// Роуты Google OAuth
+router.post("/register", register);
+router.post("/auth/login", loginRateLimiter,login);
+
+
 router.get("/google/url", getGoogleAuthUrl);
 router.get("/google/callback", googleCallback);
 router.get("/verify-session", verifySession);
