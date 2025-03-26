@@ -14,6 +14,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import schoolAdminRoutes from "./routes/schoolAdminRoutes.js";
 import superAdminRoutes from "./routes/superAdminRoutes.js";
 import studentRoutes from "./routes/studentRoutes.js";
+import studentRoutes from "../../";
 
 
 dotenv.config();
@@ -46,15 +47,6 @@ app.use("/api", teacherRoutes);
 app.use("/api/school-admins", schoolAdminRoutes);
 app.use("/api/super-admin", superAdminRoutes);
 app.use("/api/student", studentRoutes);
-
-
-const buildPath = path.join(__dirname, "../build");
-app.use(express.static(buildPath)); 
-
-
-app.get("*", (req, res) => {
-  res.sendFile(path.join(buildPath, "index.html"));
-});
 
 
 app.listen(PORT, async () => {
