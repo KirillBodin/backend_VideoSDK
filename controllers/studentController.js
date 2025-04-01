@@ -29,7 +29,7 @@ export const getTeacherForStudent = async (req, res) => {
   const { studentId } = req.params;
   try {
     const student = await Student.findOne({ where: { id: studentId } });
-    console.log("Controller: Found student:", student);
+   
     if (!student) {
       return res.status(404).json({ error: "Student not found" });
     }
@@ -37,7 +37,7 @@ export const getTeacherForStudent = async (req, res) => {
       return res.status(400).json({ error: "Student has no teacher assigned" });
     }
     const teacher = await User.findOne({ where: { id: student.teacherId, role: "teacher" } });
-    console.log("Controller: Found teacher:", teacher);
+    
     if (!teacher) {
       return res.status(404).json({ error: "Teacher not found" });
     }

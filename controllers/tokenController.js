@@ -2,8 +2,8 @@ import jwt from "jsonwebtoken";
 
 export const getToken = (req, res) => {
   try {
-    const API_KEY = "1e5365dc-0fcc-4299-9602-7e1022ffeacc";
-    const SECRET_KEY = "e3eb23ffd330656ccb8ed6c17b68f00f04cb4e57f5ed7b2b1ce14948847fa85a";
+    const API_KEY = process.env.API_KEY;
+    const SECRET_KEY = process.env.SECRET_KEY;
 
     const permissions = req.body.permissions || ["allow_join"];
 
