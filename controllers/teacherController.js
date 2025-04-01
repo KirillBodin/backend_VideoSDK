@@ -2,11 +2,74 @@ import { Op } from "sequelize";
 import { User, Student, ClassMeeting, sequelize } from "../models/index.js";
 
 const isAuthorized = (user, entity) => {
+  console.log(user)
+  console.log(entity)
   if (user.role === "superadmin") return true;
   if (user.role === "admin" && entity.adminId === user.adminId) return true;
   if (user.role === "teacher" && entity.teacherId === user.id) return true;
   return false;
 };
+
+
+export const getTeacherByLessonId = async (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    const lesson = await ClassMeeting.findByPk(lessonId, {
+      include: {
+        model: User,
+        as: "teacher",
+        attributes: ["id", "name", "email"]
+      }
+    });
+
+    if (!lesson || !lesson.teacher) {
+      return res.status(404).json({ error: "Lesson or teacher not found" });
+    }
+
+    res.json(lesson.teacher);
+  } catch (error) {
+    console.error("❌ Ошибка получения учителя для урока:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+
+export const getTeacherAdmin = async (req, res) => {
+  console.log("getTeacherAdmin called");
+  try {
+    const { teacherId } = req.params;
+    console.log("teacherId:", teacherId);
+
+    const teacher = await User.findOne({ where: { id: teacherId, role: "teacher" } });
+    console.log("Teacher found:", teacher);
+    if (!teacher) {
+      console.log("Teacher not found");
+      return res.status(404).json({ error: "Teacher not found" });
+    }
+
+    if (teacher.adminId) {
+      console.log("Teacher has adminId:", teacher.adminId);
+
+      const admin = await User.findOne({ where: { id: teacher.adminId, role: "admin" } });
+      console.log("Admin found:", admin);
+      if (!admin) {
+        console.log("Admin not found for teacher with adminId:", teacher.adminId);
+        return res.status(404).json({ error: "Admin not found" });
+      }
+      return res.json(admin);
+    } else {
+      console.log("Teacher has no adminId");
+      return res.status(404).json({ error: "Admin not found for teacher" });
+    }
+  } catch (error) {
+    console.error("Error in getTeacherAdmin:", error);
+    if (error.errors) {
+      console.error("Validation errors:", error.errors);
+    }
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 
 
 export const getAllTeachers = async (req, res) => {

@@ -1,6 +1,12 @@
 
 import express from "express";
-import { saveMeeting, getMeetingBySlugTeacherNameClass } from "../controllers/meetingController.js";
+import {
+    saveMeeting,
+    getMeetingBySlugTeacherNameClass,
+    getClassNameByMeetingId,
+  checkAccessToClass,
+  getMeetingByClassName
+  } from "../controllers/meetingController.js";
 
 const router = express.Router();
 
@@ -8,6 +14,10 @@ const router = express.Router();
 router.post("/savemeeting/new", saveMeeting);
 
 
+router.post("/savemeeting/new", saveMeeting);
 router.get("/meet/:slug/:teacherName/:className", getMeetingBySlugTeacherNameClass);
+router.post("/meet/check-access", checkAccessToClass);
+router.get("/savemeeting/by-meetingid/:meetingId", getClassNameByMeetingId);
+router.get("/savemeeting/by-classname/:className", getMeetingByClassName);
 
 export default router;

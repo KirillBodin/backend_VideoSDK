@@ -5,14 +5,12 @@ export const getToken = (req, res) => {
     const API_KEY = "1e5365dc-0fcc-4299-9602-7e1022ffeacc";
     const SECRET_KEY = "e3eb23ffd330656ccb8ed6c17b68f00f04cb4e57f5ed7b2b1ce14948847fa85a";
 
-    if (!API_KEY || !SECRET_KEY) {
-      return res.status(500).json({ error: "Missing VideoSDK API keys" });
-    }
+    const permissions = req.body.permissions || ["allow_join"];
 
     const token = jwt.sign(
       {
         apikey: API_KEY,
-        permissions: ["allow_join", "allow_mod", "allow_create", "allow_publish", "allow_subscribe"],
+        permissions,
       },
       SECRET_KEY,
       { expiresIn: "1h" }
@@ -24,3 +22,4 @@ export const getToken = (req, res) => {
     res.status(500).json({ error: "Failed to generate token" });
   }
 };
+

@@ -1,5 +1,53 @@
-import { Student, ClassMeeting } from "../models/index.js";
+import { Student, ClassMeeting,User } from "../models/index.js";
 import { Op } from "sequelize";
+
+
+export const getClassesForStudent = async (req, res) => {
+  try {
+    const studentId = req.params.id;
+
+    const student = await Student.findByPk(studentId, {
+      include: {
+        model: ClassMeeting,
+        as: "classes",
+        through: { attributes: [] }, 
+      },
+    });
+
+    if (!student) {
+      return res.status(404).json({ error: "Student not found" });
+    }
+
+    res.json(student.classes);
+  } catch (error) {
+    console.error("❌ Ошибка при получении классов ученика:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+export const getTeacherForStudent = async (req, res) => {
+  const { studentId } = req.params;
+  try {
+    const student = await Student.findOne({ where: { id: studentId } });
+    console.log("Controller: Found student:", student);
+    if (!student) {
+      return res.status(404).json({ error: "Student not found" });
+    }
+    if (!student.teacherId) {
+      return res.status(400).json({ error: "Student has no teacher assigned" });
+    }
+    const teacher = await User.findOne({ where: { id: student.teacherId, role: "teacher" } });
+    console.log("Controller: Found teacher:", teacher);
+    if (!teacher) {
+      return res.status(404).json({ error: "Teacher not found" });
+    }
+    res.json({ name: teacher.name });
+  } catch (error) {
+    console.error("Error fetching teacher for student:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
 
 export const checkStudentAccess = async (req, res) => {
   const { meetingId, email } = req.body;

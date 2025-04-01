@@ -1,4 +1,5 @@
 import { User, ClassMeeting, Student } from "../models/index.js";
+import bcrypt from "bcrypt";
 
 export const getAdminTeachers = async (req, res) => {
   try {
@@ -22,22 +23,38 @@ export const getAdminTeachers = async (req, res) => {
 
 export const createStudentByAdmin = async (req, res) => {
   try {
-    const { name, email, teacherId } = req.body;
+    const { name, email, teacherId, classIds = [] } = req.body;
 
-    if (req.user.role !== "admin") return res.status(403).json({ error: "Access denied" });
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ error: "Access denied" });
+    }
 
     const teacher = await User.findOne({ where: { id: teacherId, role: "teacher" } });
+
     if (!teacher || teacher.adminId !== req.user.adminId) {
       return res.status(403).json({ error: "You cannot assign students to this teacher" });
     }
 
     const student = await Student.create({ name, email, teacherId });
+
+    if (classIds.length > 0) {
+      const classes = await ClassMeeting.findAll({
+        where: {
+          id: classIds,
+          teacherId: teacherId, 
+        },
+      });
+
+      await student.addClasses(classes); 
+    }
+
     res.status(201).json(student);
   } catch (error) {
     console.error("❌ Ошибка добавления студента:", error);
     res.status(500).json({ error: "Ошибка сервера" });
   }
 };
+
 
 export const createClassByAdmin = async (req, res) => {
   try {
@@ -51,7 +68,9 @@ export const createClassByAdmin = async (req, res) => {
     }
 
     const slug = meetingId;
-    const classUrl = `${slug}/${teacher.name}/${className}`;
+    const teacherLastName = teacher.name.split(" ").slice(1).join(" "); 
+    const classUrl = `${slug}/${teacherLastName}/${className}`;
+
 
     const newClass = await ClassMeeting.create({
       className,
@@ -146,10 +165,12 @@ export const createTeacherByAdmin = async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
+    const hashedPassword = await bcrypt.hash(password, 10); // 👈 хешируем
+
     const teacher = await User.create({
       name,
       email,
-      password,
+      password: hashedPassword,
       role: "teacher",
       adminId,
     });
@@ -160,6 +181,8 @@ export const createTeacherByAdmin = async (req, res) => {
     res.status(500).json({ error: "Ошибка сервера" });
   }
 };
+
+
 
 export const getAdminClasses = async (req, res) => {
   try {

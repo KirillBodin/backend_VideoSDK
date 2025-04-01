@@ -14,7 +14,9 @@ import {
   updateStudent,
   deleteLesson,
   deleteStudent,
-  getStudentsByLesson
+  getStudentsByLesson,
+  getTeacherAdmin,
+  getTeacherByLessonId
 } from "../controllers/teacherController.js";
 import { authenticate } from "../middlewares/authenticate.js";
 
@@ -54,6 +56,11 @@ router.delete("/teacher/:teacherId/students/:studentId", authenticate,authorize(
 
 router.get("/teacher/:teacherId/students", authenticate,authorize(["teacher", "admin", "superadmin"]),getStudentsByTeacher);
 
-router.delete("/lessons/:lessonId", authenticate,authorize(["teacher", "admin", "superadmin"]),deleteLesson);
+router.delete("/lessons/:lessonId",authenticate,deleteLesson);
+
+router.get("/teacher/:teacherId/admin", authenticate, authorize(["teacher", "admin", "superadmin"]), getTeacherAdmin);
+
+router.get("/lessons/:lessonId/teacher",authenticate,authorize(["teacher", "admin", "superadmin"]),getTeacherByLessonId);
+
 
 export default router;
