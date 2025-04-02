@@ -5,7 +5,8 @@ import {
     getMeetingBySlugTeacherNameClass,
     getClassNameByMeetingId,
   checkAccessToClass,
-  getMeetingByClassName
+  getMeetingByClassName,
+  getUserRoleByEmail
   } from "../controllers/meetingController.js";
 
 const router = express.Router();
@@ -19,5 +20,6 @@ router.get("/meet/:slug/:teacherName/:className", getMeetingBySlugTeacherNameCla
 router.post("/meet/check-access", checkAccessToClass);
 router.get("/savemeeting/by-meetingid/:meetingId", getClassNameByMeetingId);
 router.get("/savemeeting/by-classname/:className", getMeetingByClassName);
+router.post("/users/by-email", getUserRoleByEmail);
 
 export default router;

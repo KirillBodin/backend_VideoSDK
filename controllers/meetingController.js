@@ -2,6 +2,41 @@ import { v4 as uuidv4 } from "uuid";
 import slugify from "slugify";
 import { User, ClassMeeting,Student } from "../models/index.js";
 import { Op } from "sequelize";
+
+
+export const getUserRoleByEmail = async (req, res) => {
+  const { email } = req.body;
+
+ 
+
+  try {
+    const student = await Student.findOne({ where: { email } });
+    if (student) {
+   
+      return res.json({ role: "student" });
+    } else {
+      console.log("❌ No student found with email:", email);
+    }
+
+    const teacher = await User.findOne({ where: { email } });
+    if (teacher) {
+  
+      return res.json({ role: "teacher" });
+    } else {
+      console.log("❌ No teacher found with email:", email);
+    }
+
+    
+    return res.status(404).json({ message: "User not found" });
+
+  } catch (err) {
+    console.error("❗ Error checking user role:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
 export const saveMeeting = async (req, res) => {
   try {
     const { className, meetingId, teacherEmail } = req.body;

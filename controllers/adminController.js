@@ -1,4 +1,4 @@
-import { User, ClassMeeting, Student } from "../models/index.js";
+import { User, ClassMeeting, Student,ClassStudent,StudentTeacher } from "../models/index.js";
 import bcrypt from "bcrypt";
 
 export const getAdminTeachers = async (req, res) => {
@@ -21,37 +21,29 @@ export const getAdminTeachers = async (req, res) => {
   }
 };
 
+
 export const createStudentByAdmin = async (req, res) => {
+  const { adminId } = req.params;
+  const { name, email, password, classIds = [], teacherIds = [] } = req.body;
+
   try {
-    const { name, email, teacherId, classIds = [] } = req.body;
+   
+    const newStudent = await Student.create({ name, email, password });
 
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Access denied" });
-    }
-
-    const teacher = await User.findOne({ where: { id: teacherId, role: "teacher" } });
-
-    if (!teacher || teacher.adminId !== req.user.adminId) {
-      return res.status(403).json({ error: "You cannot assign students to this teacher" });
-    }
-
-    const student = await Student.create({ name, email, teacherId });
-
+    
     if (classIds.length > 0) {
-      const classes = await ClassMeeting.findAll({
-        where: {
-          id: classIds,
-          teacherId: teacherId, 
-        },
-      });
-
-      await student.addClasses(classes); 
+      await newStudent.setClasses(classIds);
     }
 
-    res.status(201).json(student);
+  
+    if (teacherIds.length > 0) {
+      await newStudent.setTeachers(teacherIds); 
+    }
+
+    res.status(201).json(newStudent);
   } catch (error) {
-    console.error("❌ Ошибка добавления студента:", error);
-    res.status(500).json({ error: "Ошибка сервера" });
+    console.error("Error creating student by admin:", error);
+    res.status(500).json({ error: "Server error" });
   }
 };
 
@@ -62,23 +54,29 @@ export const createClassByAdmin = async (req, res) => {
 
     if (req.user.role !== "admin") return res.status(403).json({ error: "Access denied" });
 
-    const teacher = await User.findByPk(teacherId);
-    if (!teacher || teacher.role !== "teacher" || teacher.adminId !== req.user.adminId) {
-      return res.status(403).json({ error: "Invalid teacher ID or access denied" });
+    let teacher = null;
+    let teacherName = null;
+    let classUrl = null;
+
+    if (teacherId) {
+      teacher = await User.findByPk(teacherId);
+      if (!teacher || teacher.role !== "teacher" || teacher.adminId !== req.user.adminId) {
+        return res.status(403).json({ error: "Invalid teacher ID or access denied" });
+      }
+
+      const slug = meetingId;
+      const teacherLastName = teacher.name.split(" ").slice(1).join(" ");
+      classUrl = `${slug}/${teacherLastName}/${className}`;
+      teacherName = teacher.name;
     }
-
-    const slug = meetingId;
-    const teacherLastName = teacher.name.split(" ").slice(1).join(" "); 
-    const classUrl = `${slug}/${teacherLastName}/${className}`;
-
 
     const newClass = await ClassMeeting.create({
       className,
       meetingId,
-      slug,
+      slug: meetingId,
       classUrl,
-      teacherId,
-      teacherName: teacher.name,
+      teacherId: teacherId || null,
+      teacherName: teacherName || null,
     });
 
     if (studentIds && Array.isArray(studentIds)) {
@@ -92,6 +90,7 @@ export const createClassByAdmin = async (req, res) => {
     res.status(500).json({ error: "Ошибка сервера" });
   }
 };
+
 
 export const deleteClassByAdmin = async (req, res) => {
   try {
@@ -115,27 +114,30 @@ export const deleteClassByAdmin = async (req, res) => {
   }
 };
 
+
 export const deleteStudentByAdmin = async (req, res) => {
+  const { studentId } = req.params;
+
   try {
-    const { studentId } = req.params;
-
-    if (req.user.role !== "admin") return res.status(403).json({ error: "Access denied" });
-
     const student = await Student.findByPk(studentId);
-    if (!student) return res.status(404).json({ error: "Student not found" });
-
-    const teacher = await User.findByPk(student.teacherId);
-    if (!teacher || teacher.adminId !== req.user.adminId) {
-      return res.status(403).json({ error: "Access denied" });
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
     }
 
+
+    await ClassStudent.destroy({ where: { studentId } });
+    await StudentTeacher.destroy({ where: { studentId } });
+
+    
     await student.destroy();
-    res.json({ message: "Студент удалён" });
-  } catch (error) {
-    console.error("❌ Ошибка удаления студента:", error);
-    res.status(500).json({ error: "Ошибка сервера" });
+
+    res.json({ message: "Student deleted successfully" });
+  } catch (err) {
+    console.error("❌ Error deleting student:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
+
 
 export const deleteTeacherByAdmin = async (req, res) => {
   try {
@@ -156,29 +158,35 @@ export const deleteTeacherByAdmin = async (req, res) => {
   }
 };
 
+
 export const createTeacherByAdmin = async (req, res) => {
+  const { adminId } = req.params;
+  const { name, email, password, classIds = [], studentIds = [] } = req.body;
+
   try {
-    const { adminId } = req.params;
-    const { name, email, password } = req.body;
-
-    if (req.user.role !== "admin" || req.user.adminId !== Number(adminId)) {
-      return res.status(403).json({ error: "Access denied" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10); // 👈 хешируем
-
-    const teacher = await User.create({
+   
+    const newTeacher = await User.create({
       name,
       email,
-      password: hashedPassword,
+      password,
       role: "teacher",
       adminId,
     });
 
-    res.status(201).json(teacher);
+   
+    if (classIds.length > 0) {
+      await newTeacher.setLessons(classIds);
+    }
+
+    
+    if (studentIds.length > 0) {
+      await newTeacher.setStudents(studentIds); 
+    }
+
+    res.status(201).json(newTeacher);
   } catch (error) {
-    console.error("❌ Ошибка добавления учителя:", error);
-    res.status(500).json({ error: "Ошибка сервера" });
+    console.error("❌ Error creating teacher by admin:", error);
+    res.status(500).json({ error: "Server error while creating teacher" });
   }
 };
 
@@ -230,12 +238,23 @@ export const getAdminStudents = async (req, res) => {
     const teacherIds = teachers.map((t) => t.id);
 
     const students = await Student.findAll({
-      where: { teacherId: teacherIds },
       include: [
-        { model: User, as: "teacher", attributes: ["name", "email"] },
-        { model: ClassMeeting, as: "classes", through: { attributes: [] }, attributes: ["className"] },
+        {
+          model: User,
+          as: "teachers",
+          attributes: ["id", "name", "email"],
+          where: { id: teacherIds },
+          through: { attributes: [] },
+        },
+        {
+          model: ClassMeeting,
+          as: "classes",
+          attributes: ["className"],
+          through: { attributes: [] },
+        },
       ],
     });
+    
 
     res.json(students);
   } catch (error) {

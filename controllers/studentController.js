@@ -25,28 +25,27 @@ export const getClassesForStudent = async (req, res) => {
   }
 };
 
-export const getTeacherForStudent = async (req, res) => {
+
+export const getTeachersForStudent = async (req, res) => {
   const { studentId } = req.params;
   try {
-    const student = await Student.findOne({ where: { id: studentId } });
-   
+    const student = await Student.findByPk(studentId);
     if (!student) {
       return res.status(404).json({ error: "Student not found" });
     }
-    if (!student.teacherId) {
-      return res.status(400).json({ error: "Student has no teacher assigned" });
-    }
-    const teacher = await User.findOne({ where: { id: student.teacherId, role: "teacher" } });
-    
-    if (!teacher) {
-      return res.status(404).json({ error: "Teacher not found" });
-    }
-    res.json({ name: teacher.name });
+
+    const teachers = await student.getTeachers({
+      where: { role: "teacher" },
+      attributes: ["id", "name", "email"],
+    });
+
+    res.json(teachers);
   } catch (error) {
-    console.error("Error fetching teacher for student:", error);
+    console.error("Error fetching teachers for student:", error);
     res.status(500).json({ error: "Server error" });
   }
 };
+
 
 
 export const checkStudentAccess = async (req, res) => {

@@ -16,15 +16,6 @@ const Student = sequelize.define("Student", {
     allowNull: false,
     unique: true,
   },
-  teacherId: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: "Users",
-      key: "id",
-    },
-    onDelete: "CASCADE",
-  },
 });
 
 export default Student;

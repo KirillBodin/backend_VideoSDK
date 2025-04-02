@@ -1,5 +1,5 @@
 import { Op } from "sequelize";
-import { User, Student, ClassMeeting, sequelize } from "../models/index.js";
+import { User, ClassMeeting, Student, StudentTeacher }from "../models/index.js";
 
 const isAuthorized = (user, entity) => {
  
@@ -180,6 +180,7 @@ export const createTeacher = async (req, res) => {
 export const deleteTeacher = async (req, res) => {
   try {
     const { teacherId } = req.params;
+
     const teacher = await User.findOne({ where: { id: teacherId, role: "teacher" } });
     if (!teacher) return res.status(404).json({ error: "Teacher not found" });
 
@@ -187,9 +188,29 @@ export const deleteTeacher = async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
+   
+    const students = await teacher.getStudents();
+
+  
+    for (const student of students) {
+      const teachers = await student.getTeachers();
+      if (teachers.length === 1 && teachers[0].id === teacher.id) {
+ 
+        await student.destroy();
+      } else {
+        await student.removeTeacher(teacher);
+      }
+    }
+
+   
+    await ClassMeeting.destroy({ where: { teacherId } });
+
+  
     await teacher.destroy();
-    res.json({ message: "Teacher deleted" });
+
+    res.json({ message: "Teacher and related lessons deleted. Students handled." });
   } catch (error) {
+    console.error("❌ Error deleting teacher:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -249,28 +270,41 @@ export const getAllStudents = async (req, res) => {
   try {
     const students = await Student.findAll({
       include: [
-        { model: User, as: "teacher", attributes: ["name"] },
-        { model: ClassMeeting, as: "classes", attributes: ["className"], through: { attributes: [] } },
+        {
+          model: User,
+          as: "teachers",
+          attributes: ["id", "name"],
+          through: { attributes: [] },
+        },
+        {
+          model: ClassMeeting,
+          as: "classes",
+          attributes: ["id", "className"],
+          through: { attributes: [] },
+        },
       ],
     });
+
     const filtered = students.filter((s) => isAuthorized(req.user, s));
+
     const transformed = filtered.map((student) => {
       const studentJson = student.toJSON();
-      studentJson.teacherName = studentJson.teacher?.name || null;
-      studentJson.className = studentJson.classes?.[0]?.className || null;
-      delete studentJson.teacher;
+      studentJson.teacherNames = studentJson.teachers?.map(t => t.name) || [];
+      studentJson.classNames = studentJson.classes?.map(c => c.className) || [];
+      delete studentJson.teachers;
       delete studentJson.classes;
       return studentJson;
     });
+
     res.json(transformed);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 export const createStudent = async (req, res) => {
   try {
-    const { teacherId } = req.params;
-    const { name, email } = req.body;
+    const { name, email, password, teacherIds = [], classIds = [] } = req.body;
 
     if (!name || !email) {
       return res.status(400).json({ error: "Name and email are required" });
@@ -281,17 +315,25 @@ export const createStudent = async (req, res) => {
       return res.status(400).json({ error: "Student with this email already exists" });
     }
 
-    const student = await Student.create({
-      name,
-      email,
-      teacherId,
-    });
+    const student = await Student.create({ name, email, password });
+
+    if (Array.isArray(teacherIds) && teacherIds.length > 0) {
+      const validTeachers = await Teacher.findAll({ where: { id: teacherIds } });
+      await student.addTeachers(validTeachers);
+    }
+
+    if (Array.isArray(classIds) && classIds.length > 0) {
+      const validClasses = await ClassMeeting.findAll({ where: { id: classIds } });
+      await student.addClasses(validClasses);
+    }
 
     res.status(201).json(student);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
+
 
 export const deleteStudent = async (req, res) => {
   try {
@@ -324,29 +366,38 @@ export const getStudentsByTeacher = async (req, res) => {
   try {
     const { teacherId } = req.params;
 
-    const students = await Student.findAll({
-      where: { teacherId },
-      include: [
-        {
+    const teacher = await User.findOne({
+      where: { id: teacherId, role: "teacher" },
+      include: {
+        model: Student,
+        as: "students",
+        include: {
           model: ClassMeeting,
           as: "classes",
           attributes: ["id", "className"],
           through: { attributes: [] },
         },
-      ],
+        through: { attributes: [] },
+      },
     });
 
-    const transformed = students.map((student) => {
+    if (!teacher) {
+      return res.status(404).json({ error: "Teacher not found" });
+    }
+
+    const students = teacher.students.map((student) => {
       const studentJson = student.toJSON();
- 
+      studentJson.classNames = studentJson.classes?.map(c => c.className) || [];
+      delete studentJson.classes;
       return studentJson;
     });
 
-    res.json(transformed);
+    res.json(students);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 
 export const getTeacherById = async (req, res) => {
@@ -362,7 +413,11 @@ export const getTeacherById = async (req, res) => {
     }
 
     const numberOfClasses = await ClassMeeting.count({ where: { teacherId } });
-    const numberOfStudents = await Student.count({ where: { teacherId } });
+
+    
+    const numberOfStudents = await StudentTeacher.count({
+      where: { teacherId },
+    });
 
     const teacherJson = teacher.toJSON();
     teacherJson.numberOfClasses = numberOfClasses;
@@ -430,40 +485,44 @@ export const getStudentsByLesson = async (req, res) => {
 
 export const updateStudent = async (req, res) => {
   try {
-    const { teacherId, studentId } = req.params;
-    const { name, email, classId } = req.body;
+    const { studentId } = req.params;
+    const { name, email, classIds, teacherIds } = req.body;
 
-    const student = await Student.findOne({
-      where: { id: studentId, teacherId },
-    });
-
+    const student = await Student.findByPk(studentId);
     if (!student) {
-      return res.status(404).json({ error: "Student not found for this teacher" });
+      return res.status(404).json({ error: "Student not found" });
     }
 
     if (name) student.name = name;
     if (email) student.email = email;
-    if (classId) {
-      const classInstance = await ClassMeeting.findByPk(classId);
-      if (classInstance) {
-        student.teacherId = classInstance.teacherId;
-        if (typeof student.setClasses === "function") {
-          await student.setClasses([classInstance]);
-        }
-      }
+    await student.save();
+
+   
+    if (Array.isArray(classIds)) {
+      const validClasses = await ClassMeeting.findAll({ where: { id: classIds } });
+      await student.setClasses(validClasses);
     }
 
-    await student.save();
-    res.json(student);
+    
+    if (Array.isArray(teacherIds)) {
+      const validTeachers = await User.findAll({
+        where: { id: teacherIds, role: "teacher" },
+      });
+      await student.setTeachers(validTeachers);
+    }
+
+    res.json({ message: "Student updated", student });
   } catch (error) {
+    console.error("❌ Error updating student:", error);
     res.status(500).json({ error: error.message });
   }
 };
 
+
 export const updateLesson = async (req, res) => {
   try {
     const { lessonId } = req.params;
-    const { className } = req.body;
+    const { className, meetingId, teacherId, studentIds } = req.body;
 
     const lesson = await ClassMeeting.findByPk(lessonId);
     if (!lesson) {
@@ -471,10 +530,20 @@ export const updateLesson = async (req, res) => {
     }
 
     if (className) lesson.className = className;
+    if (meetingId) lesson.meetingId = meetingId;
+    if (teacherId) lesson.teacherId = teacherId;
 
     await lesson.save();
-    res.json(lesson);
+
+   
+    if (Array.isArray(studentIds)) {
+      const validStudents = await Student.findAll({ where: { id: studentIds } });
+      await lesson.setStudents(validStudents);
+    }
+
+    res.json({ message: "Lesson updated", lesson });
   } catch (error) {
+    console.error("❌ Error updating lesson:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -482,21 +551,61 @@ export const updateLesson = async (req, res) => {
 export const updateTeacher = async (req, res) => {
   try {
     const { teacherId } = req.params;
-    const { name, email, password } = req.body;
-    const teacher = await User.findOne({ where: { id: teacherId, role: "teacher" } });
+    const { name, email, password, classIds = [], studentIds = [] } = req.body;
+
+    const teacher = await User.findOne({
+      where: { id: teacherId, role: "teacher" },
+      include: [{ model: Student, as: "students" }],
+    });
     if (!teacher) return res.status(404).json({ error: "Teacher not found" });
 
     if (!isAuthorized(req.user, teacher)) {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    if (name) teacher.name = name;
-    if (email) teacher.email = email;
-    if (password) teacher.password = password;
+    
+    if (name && name.trim()) teacher.name = name.trim();
+    if (email && email.trim()) teacher.email = email.trim();
+
+    if (password !== undefined && password.trim()) {
+      const hashedPassword = await bcrypt.hash(password.trim(), 10);
+      teacher.password = hashedPassword;
+    }
+
     await teacher.save();
 
-    res.json(teacher);
+    
+    if (Array.isArray(classIds)) {
+      const existingLessons = await ClassMeeting.findAll({ where: { teacherId: teacher.id } });
+      const existingIds = existingLessons.map((l) => l.id);
+
+      const toRemove = existingIds.filter((id) => !classIds.includes(id));
+      const toAdd = classIds.filter((id) => !existingIds.includes(id));
+
+      if (toRemove.length > 0) {
+        await ClassMeeting.update(
+          { teacherId: null },
+          { where: { id: toRemove } }
+        );
+      }
+
+      if (toAdd.length > 0) {
+        await ClassMeeting.update(
+          { teacherId: teacher.id },
+          { where: { id: toAdd } }
+        );
+      }
+    }
+
+    
+    if (Array.isArray(studentIds)) {
+      const students = await Student.findAll({ where: { id: studentIds } });
+      await teacher.setStudents(students); 
+    }
+
+    res.json({ success: true, teacherId: teacher.id, teacher });
   } catch (error) {
+    console.error("❌ Error updating teacher:", error);
     res.status(500).json({ error: error.message });
   }
 };
