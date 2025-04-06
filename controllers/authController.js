@@ -158,7 +158,7 @@ export const googleCallback = async (req, res) => {
         picture: payload.picture,
       },
       JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "2h" }
     );
 
 

@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import ClassMeeting from "../models/ClassMeeting.js";
 import Student from "../models/Student.js";
+import StudentTeacher from "../models/StudentTeacher.js";
 
 export const getAllTeachers = async (req, res) => {
   try {
@@ -8,7 +9,7 @@ export const getAllTeachers = async (req, res) => {
     const teachersWithCounts = await Promise.all(
       teachers.map(async (teacher) => {
         const numberOfClasses = await ClassMeeting.count({ where: { teacherId: teacher.id } });
-        const numberOfStudents = await Student.count({ where: { teacherId: teacher.id } });
+        const numberOfStudents = await StudentTeacher.count({ where: { teacherId: teacher.id } });
         const teacherJson = teacher.toJSON();
         teacherJson.numberOfClasses = numberOfClasses;
         teacherJson.numberOfStudents = numberOfStudents;
@@ -20,7 +21,6 @@ export const getAllTeachers = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 export const updateAdmin = async (req, res) => {
   const { id } = req.params;
   const { name, email, password } = req.body;
@@ -151,25 +151,12 @@ export const deleteTeacher = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 export const getAllClasses = async (req, res) => {
   try {
     const classes = await ClassMeeting.findAll();
     const classesWithCounts = await Promise.all(
       classes.map(async (cls) => {
-        let numberOfStudents = 0;
-        if (typeof cls.countStudents === "function") {
-          numberOfStudents = await cls.countStudents();
-        } else {
-          numberOfStudents = await cls.sequelize.models.Student.count({ 
-            include: [{
-              model: ClassMeeting,
-              as: "classes",
-              where: { id: cls.id },
-              through: { attributes: [] }
-            }]
-          });
-        }
+        const numberOfStudents = await cls.countStudents(); 
         const clsJson = cls.toJSON();
         clsJson.numberOfStudents = numberOfStudents;
         return clsJson;
@@ -180,6 +167,7 @@ export const getAllClasses = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 export const createClass = async (req, res) => {
   try {
@@ -223,18 +211,21 @@ export const getAllStudents = async (req, res) => {
   try {
     const students = await Student.findAll({
       include: [
-        { model: User, as: "teacher", attributes: ["name"] },
+        { model: User, as: "teachers", attributes: ["name"], through: { attributes: [] } },
         { model: ClassMeeting, as: "classes", attributes: ["className"], through: { attributes: [] } },
       ],
     });
     const studentsTransformed = students.map((student) => {
       const studentJson = student.toJSON();
-      studentJson.teacherName = studentJson.teacher ? studentJson.teacher.name : null;
+      studentJson.teacherName =
+        studentJson.teachers && studentJson.teachers.length > 0
+          ? studentJson.teachers[0].name
+          : null;
       studentJson.className =
         studentJson.classes && studentJson.classes.length > 0
           ? studentJson.classes[0].className
           : null;
-      delete studentJson.teacher;
+      delete studentJson.teachers;
       delete studentJson.classes;
       return studentJson;
     });
@@ -243,6 +234,7 @@ export const getAllStudents = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 export const createStudent = async (req, res) => {
   try {
@@ -256,14 +248,19 @@ export const createStudent = async (req, res) => {
       return res.status(404).json({ error: "Class not found" });
     }
 
+   
     const student = await Student.create({
       name: studentName,
       email: studentEmail,
-      teacherId: classInstance.teacherId,
     });
 
+   
     if (typeof student.addClass === "function") {
       await student.addClass(classInstance);
+    }
+   
+    if (typeof student.addTeacher === "function") {
+      await student.addTeacher(classInstance.teacherId);
     }
 
     res.status(201).json(student);
@@ -272,25 +269,22 @@ export const createStudent = async (req, res) => {
   }
 };
 
+
 export const deleteStudent = async (req, res) => {
   try {
     const { id } = req.params;
     const student = await Student.findByPk(id);
-
     if (!student) {
       return res.status(404).json({ error: "Student not found" });
     }
-
-    if (req.user.role === "admin" && student.teacherId !== req.user.id) {
-      return res.status(403).json({ error: "Access denied" });
-    }
-
+   
     await student.destroy();
     res.json({ message: "Student deleted" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 export const getAllAdmins = async (req, res) => {
   try {

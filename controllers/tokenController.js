@@ -5,7 +5,7 @@ export const getToken = (req, res) => {
     const API_KEY = process.env.API_KEY;
     const SECRET_KEY = process.env.SECRET_KEY;
 
-    const permissions = req.body.permissions || ["allow_join"];
+    const permissions = req.body.permissions;
 
     const token = jwt.sign(
       {
@@ -13,12 +13,12 @@ export const getToken = (req, res) => {
         permissions,
       },
       SECRET_KEY,
-      { expiresIn: "1h" }
+      { expiresIn: "2h" }
     );
 
     res.json({ token });
   } catch (error) {
-    console.error("[server] ❌ Ошибка генерации токена:", error);
+    console.error("[server] ❌ Failed to generate token:", error);
     res.status(500).json({ error: "Failed to generate token" });
   }
 };
