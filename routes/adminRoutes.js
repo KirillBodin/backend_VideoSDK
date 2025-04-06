@@ -36,5 +36,5 @@ router.post("/:adminId/students", authenticate,authorize(["admin", "superadmin"]
 router.delete("/classes/:classId", authenticate,authorize(["admin", "superadmin"]),deleteClassByAdmin);
 router.delete("/students/:studentId", authenticate,authorize(["admin", "superadmin"]),deleteStudentByAdmin);
 
-export default router; // ✅ ES-модуль
+export default router; 
 

@@ -16,8 +16,8 @@ export const getAdminTeachers = async (req, res) => {
 
     res.json(teachers);
   } catch (error) {
-    console.error("❌ Ошибка получения учителей директора:", error);
-    res.status(500).json({ error: "Ошибка сервера" });
+    console.error("❌ Error:", error);
+    res.status(500).json({ error: "Error" });
   }
 };
 
@@ -86,8 +86,8 @@ export const createClassByAdmin = async (req, res) => {
 
     res.status(201).json(newClass);
   } catch (error) {
-    console.error("❌ Ошибка добавления класса:", error);
-    res.status(500).json({ error: "Ошибка сервера" });
+    console.error("❌ Error:", error);
+    res.status(500).json({ error: "Error" });
   }
 };
 
@@ -107,10 +107,10 @@ export const deleteClassByAdmin = async (req, res) => {
     }
 
     await classInstance.destroy();
-    res.json({ message: "Урок удалён" });
+    res.json({ message: "Class deleted" });
   } catch (error) {
-    console.error("❌ Ошибка удаления класса:", error);
-    res.status(500).json({ error: "Ошибка сервера" });
+    console.error("❌ Error:", error);
+    res.status(500).json({ error: "Error" });
   }
 };
 
@@ -151,10 +151,10 @@ export const deleteTeacherByAdmin = async (req, res) => {
     }
 
     await teacher.destroy();
-    res.json({ message: "Учитель удалён" });
+    res.json({ message: "Deleted" });
   } catch (error) {
-    console.error("❌ Ошибка удаления учителя:", error);
-    res.status(500).json({ error: "Ошибка сервера" });
+    console.error("❌ Error:", error);
+    res.status(500).json({ error: "Error" });
   }
 };
 
@@ -217,8 +217,8 @@ export const getAdminClasses = async (req, res) => {
 
     res.json(classes);
   } catch (error) {
-    console.error("❌ Ошибка получения уроков директора:", error);
-    res.status(500).json({ error: "Ошибка сервера" });
+    console.error("❌ Error:", error);
+    res.status(500).json({ error: "Error" });
   }
 };
 
@@ -258,7 +258,7 @@ export const getAdminStudents = async (req, res) => {
 
     res.json(students);
   } catch (error) {
-    console.error("❌ Ошибка получения студентов директора:", error);
-    res.status(500).json({ error: "Ошибка сервера" });
+    console.error("❌ Error:", error);
+    res.status(500).json({ error: "Error" });
   }
 };

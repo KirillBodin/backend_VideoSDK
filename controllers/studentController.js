@@ -20,7 +20,7 @@ export const getClassesForStudent = async (req, res) => {
 
     res.json(student.classes);
   } catch (error) {
-    console.error("❌ Ошибка при получении классов ученика:", error);
+    console.error("❌ Error:", error);
     res.status(500).json({ error: "Server error" });
   }
 };

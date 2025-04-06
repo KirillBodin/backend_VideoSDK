@@ -51,12 +51,12 @@ Student.belongsToMany(User, {
 const initDB = async () => {
   try {
     await sequelize.authenticate();
-    console.log("✅ Подключение к БД успешно!");
+    console.log("✅ Ok!");
 
     await sequelize.sync({ alter: true }); 
-    console.log("✅ База данных синхронизирована!");
+    console.log("✅ OK!");
   } catch (error) {
-    console.error("❌ Ошибка подключения:", error);
+    console.error("❌ Error", error);
   }
 };
 

@@ -51,5 +51,5 @@ app.use("/api/student", studentRoutes);
 
 app.listen(PORT, async () => {
   await initDB();
-  console.log(`🚀 Сервер запущен на http://localhost:${PORT}`);
+  console.log(`🚀 The server is running on http://localhost:${PORT}`);
 });

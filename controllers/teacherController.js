@@ -27,7 +27,7 @@ export const getTeacherByLessonId = async (req, res) => {
 
     res.json(lesson.teacher);
   } catch (error) {
-    console.error("❌ Ошибка получения учителя для урока:", error);
+    console.error("❌ Error:", error);
     res.status(500).json({ error: "Server error" });
   }
 };

@@ -117,7 +117,7 @@ export const login = async (req, res) => {
       adminId,
     });
   } catch (error) {
-    console.error("❌ Ошибка логина:", error);
+    console.error("❌ Login error:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };

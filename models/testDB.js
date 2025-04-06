@@ -15,7 +15,7 @@ const testDB = async () => {
 
     console.log("✅ Создан пользователь:", user.toJSON());
   } catch (error) {
-    console.error("❌ Ошибка:", error);
+    console.error("❌ Error:", error);
   }
 };
 
