@@ -25,8 +25,8 @@ const router = express.Router();
 
 router.get("/teachers",authenticate, getTeachers);
 
-router.put("/students/:studentId",authenticate, authorize(["teacher", "admin", "superadmin"]),updateStudent);
-router.post("/students",authenticate, authorize(["teacher", "admin", "superadmin"]),createStudent);
+router.put("/teacher/:teacherId/students/:studentId",authenticate, authorize(["teacher", "admin", "superadmin"]),updateStudent);
+router.post("/teacher/:teacherId/students",authenticate, authorize(["teacher", "admin", "superadmin"]),createStudent);
 
 router.get("/teachers/:teacherId",authenticate, authorize(["teacher", "admin", "superadmin"]),getTeacherById);
 

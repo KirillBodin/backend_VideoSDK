@@ -22,6 +22,45 @@ export const getAdminTeachers = async (req, res) => {
 };
 
 
+export const updateStudentByAdmin = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { name, email, classIds = [], teacherIds = [] } = req.body;
+
+    const student = await Student.findByPk(studentId);
+    if (!student) {
+      return res.status(404).json({ error: "Student not found" });
+    }
+
+    if (name) student.name = name;
+    if (email) student.email = email;
+    await student.save();
+
+    if (Array.isArray(classIds)) {
+      const validClasses = await ClassMeeting.findAll({
+        where: { id: classIds },
+      });
+      await student.setClasses(validClasses);
+    }
+
+    if (Array.isArray(teacherIds)) {
+      const validTeachers = await User.findAll({
+        where: {
+          id: teacherIds,
+          role: "teacher",
+        },
+      });
+      await student.setTeachers(validTeachers);
+    }
+
+    res.json({ message: "Student updated by admin", student });
+  } catch (error) {
+    console.error("❌ Error updating student by admin:", error);
+    res.status(500).json({ error: error.message || "Server error" });
+  }
+};
+
+
 export const createStudentByAdmin = async (req, res) => {
   const { adminId } = req.params;
   const { name, email, password, classIds = [], teacherIds = [] } = req.body;

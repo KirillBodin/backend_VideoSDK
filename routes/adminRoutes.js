@@ -8,7 +8,8 @@ import {
   createStudentByAdmin,
   deleteTeacherByAdmin,
   deleteClassByAdmin,
-  deleteStudentByAdmin
+  deleteStudentByAdmin,
+  updateStudentByAdmin
 } from "../controllers/adminController.js";
 
 import { authenticate } from "../middlewares/authenticate.js";
@@ -25,6 +26,7 @@ router.get("/:adminId/students", authenticate,authorize(["admin", "superadmin"])
 
 router.get("/:adminId/classes", authenticate,authorize(["admin", "superadmin"]),getAdminClasses);
 
+router.put("/:adminId/students/:studentId", authenticate, authorize(["admin", "superadmin"]), updateStudentByAdmin);
 
 
 router.post("/:adminId/teachers", authenticate,authorize(["admin", "superadmin"]),createTeacherByAdmin);
