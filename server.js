@@ -37,6 +37,7 @@ const allowedOrigins = [
   "https://web.telegram.org", 
 ];
 
+
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -69,6 +70,9 @@ app.use("/api", teacherRoutes);
 app.use("/api/school-admins", schoolAdminRoutes);
 app.use("/api/super-admin", superAdminRoutes);
 app.use("/api/student", studentRoutes);
+
+
+
 
 app.use((req, res, next) => {
   res.status(404).json({ error: "Route not found" });

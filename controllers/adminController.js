@@ -32,6 +32,14 @@ export const updateStudentByAdmin = async (req, res) => {
       return res.status(404).json({ error: "Student not found" });
     }
 
+    // Если указан новый email, проверяем, что он не используется другим студентом
+    if (email && email !== student.email) {
+      const duplicateStudent = await Student.findOne({ where: { email } });
+      if (duplicateStudent) {
+        return res.status(400).json({ error: "Email уже используется другим студентом" });
+      }
+    }
+
     if (name) student.name = name;
     if (email) student.email = email;
     await student.save();
@@ -61,20 +69,24 @@ export const updateStudentByAdmin = async (req, res) => {
 };
 
 
+
 export const createStudentByAdmin = async (req, res) => {
   const { adminId } = req.params;
   const { name, email, password, classIds = [], teacherIds = [] } = req.body;
 
   try {
-   
+    
+    const existingStudent = await Student.findOne({ where: { email } });
+    if (existingStudent) {
+      return res.status(400).json({ error: "A student with this email already exists" });
+    }
+    
     const newStudent = await Student.create({ name, email, password });
-
     
     if (classIds.length > 0) {
       await newStudent.setClasses(classIds);
     }
 
-  
     if (teacherIds.length > 0) {
       await newStudent.setTeachers(teacherIds); 
     }
@@ -85,6 +97,7 @@ export const createStudentByAdmin = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
 
 
 export const createClassByAdmin = async (req, res) => {
@@ -203,23 +216,22 @@ export const createTeacherByAdmin = async (req, res) => {
   const { name, email, password, classIds = [], studentIds = [] } = req.body;
 
   try {
-   
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const newTeacher = await User.create({
       name,
       email,
-      password,
+      password: hashedPassword, 
       role: "teacher",
       adminId,
     });
 
-   
     if (classIds.length > 0) {
       await newTeacher.setLessons(classIds);
     }
 
-    
     if (studentIds.length > 0) {
-      await newTeacher.setStudents(studentIds); 
+      await newTeacher.setStudents(studentIds);
     }
 
     res.status(201).json(newTeacher);

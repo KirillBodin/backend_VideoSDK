@@ -17,7 +17,7 @@ router.use(cookieParser());
 router.post("/register", register);
 router.post("/auth/login", loginRateLimiter, login);
 
-router.get("/google/url", getGoogleAuthUrl);
+router.get("/auth/google/url", getGoogleAuthUrl);
 router.get("/google/callback", googleCallback);
 router.get("/verify-session", verifySession);
 router.get("/logout", logout);

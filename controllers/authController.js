@@ -9,12 +9,12 @@ import { google } from "googleapis";
 import { OAuth2Client } from "google-auth-library";
 
 const GOOGLE_CLIENT_ID =
-  process.env.GOOGLE_CLIENT_ID;
+process.env.GOOGLE_CLIENT_ID;
 
 const GOOGLE_CLIENT_SECRET =
-  process.env.GOOGLE_CLIENT_SECRET ;
+process.env.GOOGLE_CLIENT_SECRET ;
 
-const REDIRECT_URI = process.env.SERVER_URL;
+const REDIRECT_URI = `${process.env.SERVER_URL}/api/google/callback`;
 const JWT_SECRET = process.env.JWT_SECRET;
 
 const oauth2Client = new google.auth.OAuth2(
@@ -134,6 +134,7 @@ export const getGoogleAuthUrl = (req, res) => {
 
 // Google OAuth Callback
 export const googleCallback = async (req, res) => {
+  console.log("start")
   try {
     const { code } = req.query;
     if (!code) {
@@ -141,6 +142,12 @@ export const googleCallback = async (req, res) => {
     }
 
     const { tokens } = await oauth2Client.getToken(code);
+    console.log("TOKENS:", tokens); // <-- Посмотри, есть ли тут id_token
+
+    if (!tokens.id_token) {
+      return res.status(401).json({ success: false, error: "No id_token received from Google" });
+    }
+
     oauth2Client.setCredentials(tokens);
 
     const ticket = await googleAuthClient.verifyIdToken({
@@ -149,7 +156,7 @@ export const googleCallback = async (req, res) => {
     });
 
     const payload = ticket.getPayload();
- 
+    console.log("Google Payload:", payload);
 
     const serverToken = jwt.sign(
       {
@@ -161,17 +168,17 @@ export const googleCallback = async (req, res) => {
       { expiresIn: "2h" }
     );
 
-
-
-    return res.redirect(`https://meet.tamamat.com?token=${serverToken}`);
+    return res.redirect(`${process.env.CLIENT_URL}?token=${serverToken}`);
   } catch (error) {
-    console.error("❌ Error:", error);
+    console.error("❌ Error in googleCallback:", error);
     return res.status(500).json({ success: false, error: "Google authentication failed" });
   }
 };
 
+
 // Session check
 export const verifySession = async (req, res) => {
+  console.log("verifySession")
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -193,5 +200,5 @@ export const verifySession = async (req, res) => {
 // Logout
 export const logout = (req, res) => {
   res.clearCookie("sessionToken");
-  res.redirect("https://meet.tamamat.com");
+  res.redirect(`${process.env.CLIENT_URL}`);
 };
