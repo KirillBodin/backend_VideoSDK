@@ -234,10 +234,16 @@ export const createTeacherByAdmin = async (req, res) => {
       await newTeacher.setStudents(studentIds);
     }
 
-    res.status(201).json(newTeacher);
+    return res.status(201).json(newTeacher);
+
   } catch (error) {
     console.error("❌ Error creating teacher by admin:", error);
-    res.status(500).json({ error: "Server error while creating teacher" });
+    if (error.name === "SequelizeUniqueConstraintError") {
+      return res.status(400).json({ error: "Email already exists." });
+    }
+
+    // Во всех прочих случаях — 500
+    return res.status(500).json({ error: "Server error while creating teacher" });
   }
 };
 
