@@ -56,20 +56,28 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log("📩 Login request received with email:", email);
 
     if (!email || !password) {
+      console.log("⚠️ Missing email or password");
       return res
         .status(400)
         .json({ error: "Email and password are required" });
     }
 
     const user = await User.findOne({ where: { email } });
+    console.log("👤 Fetched user:", user ? user.toJSON() : "Not found");
+
     if (!user) {
+      console.log("❌ User not found with email:", email);
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log("🔐 Password match:", isMatch);
+
     if (!isMatch) {
+      console.log("❌ Invalid password for user:", email);
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
@@ -91,6 +99,15 @@ export const login = async (req, res) => {
       name = user.name?.replace(/\s+/g, "_") || null;
     }
 
+    console.log("✅ Authenticated:", {
+      id: user.id,
+      role: user.role,
+      name,
+      teacherId,
+      adminId,
+      schoolId,
+    });
+
     const payload = {
       id: user.id,
       role: user.role,
@@ -99,6 +116,7 @@ export const login = async (req, res) => {
     };
 
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "1h" });
+    console.log("🔑 Generated JWT:", token);
 
     res.cookie("token", token, {
       httpOnly: true,
