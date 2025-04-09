@@ -1,5 +1,6 @@
 import { Op } from "sequelize";
 import { User, ClassMeeting, Student, StudentTeacher,ClassStudent }from "../models/index.js";
+import bcrypt from "bcrypt";
 
 const isAuthorized = (user, entity) => {
  
@@ -500,7 +501,8 @@ export const updateStudent = async (req, res) => {
 
     if (name) student.name = name;
     if (email) student.email = email;
-    await student.save();
+
+    await student.save(); 
 
     if (Array.isArray(classIds)) {
       const validClasses = await ClassMeeting.findAll({
@@ -513,8 +515,14 @@ export const updateStudent = async (req, res) => {
       message: "Student updated successfully",
       student,
     });
+
   } catch (error) {
     console.error("❌ Error updating student:", error);
+
+    if (error.name === "SequelizeUniqueConstraintError") {
+      return res.status(400).json({ error: "Email already exists. Please use a different email." });
+    }
+
     res.status(500).json({ error: error.message || "Server error" });
   }
 };
@@ -559,8 +567,12 @@ export const updateTeacher = async (req, res) => {
       where: { id: teacherId, role: "teacher" },
       include: [{ model: Student, as: "students" }],
     });
-    if (!teacher) return res.status(404).json({ error: "Teacher not found" });
 
+    if (!teacher) {
+      return res.status(404).json({ error: "Teacher not found" });
+    }
+
+   
     if (!isAuthorized(req.user, teacher)) {
       return res.status(403).json({ error: "Access denied" });
     }
@@ -574,6 +586,7 @@ export const updateTeacher = async (req, res) => {
       teacher.password = hashedPassword;
     }
 
+ 
     await teacher.save();
 
     
@@ -599,15 +612,21 @@ export const updateTeacher = async (req, res) => {
       }
     }
 
-    
+  
     if (Array.isArray(studentIds)) {
       const students = await Student.findAll({ where: { id: studentIds } });
-      await teacher.setStudents(students); 
+      await teacher.setStudents(students);
     }
 
     res.json({ success: true, teacherId: teacher.id, teacher });
   } catch (error) {
     console.error("❌ Error updating teacher:", error);
-    res.status(500).json({ error: error.message });
+
+    if (error.name === "SequelizeUniqueConstraintError") {
+    
+      return res.status(400).json({ error: "Email already exists." });
+    }
+
+    return res.status(500).json({ error: "Server error while updating teacher" });
   }
 };

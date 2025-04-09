@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import ClassMeeting from "../models/ClassMeeting.js";
 import Student from "../models/Student.js";
 import StudentTeacher from "../models/StudentTeacher.js";
+import bcrypt from "bcrypt";
 
 export const getAllTeachers = async (req, res) => {
   try {
@@ -108,6 +109,7 @@ export const deleteAdmin = async (req, res) => {
 export const createTeacher = async (req, res) => {
   try {
     const { teacherName, teacherEmail, teacherPassword } = req.body;
+
     if (!teacherName || !teacherEmail || !teacherPassword) {
       return res.status(400).json({ error: "Fill in all fields" });
     }
@@ -116,16 +118,20 @@ export const createTeacher = async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
+   
+    const hashedPassword = await bcrypt.hash(teacherPassword, 10);
+
     const teacher = await User.create({
       name: teacherName,
       email: teacherEmail,
-      password: teacherPassword,
+      password: hashedPassword,
       role: "teacher",
       adminId: req.user.adminId || null
     });
 
     res.status(201).json(teacher);
   } catch (error) {
+    console.error("❌ Error creating teacher:", error);
     res.status(500).json({ error: error.message });
   }
 };
