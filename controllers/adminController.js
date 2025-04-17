@@ -1,6 +1,33 @@
 import { User, ClassMeeting, Student,ClassStudent,StudentTeacher } from "../models/index.js";
 import bcrypt from "bcrypt";
 
+
+
+export const getAdminInfo = async (req, res) => {
+  const { adminId } = req.params;
+
+  try {
+    const admin = await User.findByPk(adminId, {
+      attributes: ["id", "name", "email", "schoolName", "role"],
+    });
+
+    if (!admin || admin.role !== "admin") {
+      return res.status(404).json({ error: "Admin not found" });
+    }
+
+    
+    if (req.user.role === "admin" && req.user.id !== Number(adminId)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    res.json(admin);
+  } catch (error) {
+    console.error("❌ Error fetching admin info:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+
 export const getAdminTeachers = async (req, res) => {
   try {
     const { adminId } = req.params;
@@ -32,7 +59,7 @@ export const updateStudentByAdmin = async (req, res) => {
       return res.status(404).json({ error: "Student not found" });
     }
 
-    // Если указан новый email, проверяем, что он не используется другим студентом
+    
     if (email && email !== student.email) {
       const duplicateStudent = await Student.findOne({ where: { email } });
       if (duplicateStudent) {
@@ -242,7 +269,7 @@ export const createTeacherByAdmin = async (req, res) => {
       return res.status(400).json({ error: "Email already exists." });
     }
 
-    // Во всех прочих случаях — 500
+ 
     return res.status(500).json({ error: "Server error while creating teacher" });
   }
 };

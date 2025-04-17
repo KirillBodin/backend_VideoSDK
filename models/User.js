@@ -1,6 +1,5 @@
 import { DataTypes } from "sequelize";
 import sequelize from "./db.js";
-
 const User = sequelize.define("User", {
   id: {
     type: DataTypes.INTEGER,
@@ -23,6 +22,10 @@ const User = sequelize.define("User", {
   role: {
     type: DataTypes.ENUM("superadmin", "admin", "teacher"),
     allowNull: false,
+  },
+  schoolName: {
+    type: DataTypes.STRING,
+    allowNull: true, 
   },
   adminId: {
     type: DataTypes.INTEGER,

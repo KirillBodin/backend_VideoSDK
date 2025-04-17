@@ -9,7 +9,8 @@ import {
   deleteTeacherByAdmin,
   deleteClassByAdmin,
   deleteStudentByAdmin,
-  updateStudentByAdmin
+  updateStudentByAdmin,
+  getAdminInfo
 } from "../controllers/adminController.js";
 
 import { authenticate } from "../middlewares/authenticate.js";
@@ -17,7 +18,7 @@ import { authorize } from "../middlewares/authorize.js";
 
 const router = express.Router();
 
-
+router.get("/:adminId", authenticate, authorize(["admin", "superadmin"]), getAdminInfo);
 router.get("/:adminId/teachers",authenticate,  authorize(["admin", "superadmin"]),getAdminTeachers);
 
 

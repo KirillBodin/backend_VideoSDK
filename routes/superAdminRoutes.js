@@ -12,7 +12,12 @@ import {
   getAllAdmins,
   createAdmin,
   updateAdmin,     
-  deleteAdmin 
+  deleteAdmin,
+  getTeacherDetails,
+  getClassDetails,
+  getStudentDetails,
+  updateClass,
+  getAdminDetails,
 } from "../controllers/superAdminController.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
@@ -24,10 +29,17 @@ router.get("/teachers", authenticate, authorize("superadmin"),getAllTeachers);
 router.post("/teachers", authenticate, authorize("superadmin"),createTeacher);
 router.delete("/teachers/:id",authenticate, authorize("superadmin"), deleteTeacher);
 
+router.get("/teachers/:id/details", authenticate, authorize("superadmin"), getTeacherDetails);
+router.get("/classes/:id/details", authenticate, authorize("superadmin"), getClassDetails);
+router.get("/students/:id/details", authenticate, authorize("superadmin"), getStudentDetails);
+router.get("/admins/:id/details", authenticate, authorize("superadmin"), getAdminDetails);
+
 
 router.get("/classes",authenticate, authorize("superadmin"), getAllClasses);
 router.post("/classes", authenticate,authorize("superadmin"), createClass);
 router.delete("/classes/:id", authenticate,authorize("superadmin"), deleteClass);
+router.put("/classes/:id", authenticate, authorize("superadmin"), updateClass);
+
 
 
 router.get("/students", authenticate, authorize("superadmin"),getAllStudents);
