@@ -5,25 +5,20 @@ import bcrypt from "bcrypt";
 
 export const getAdminInfo = async (req, res) => {
   const { adminId } = req.params;
-
   try {
     const admin = await User.findByPk(adminId, {
       attributes: ["id", "name", "email", "schoolName", "role"],
     });
-
     if (!admin || admin.role !== "admin") {
-      return res.status(404).json({ error: "Admin not found" });
+      return res.status(404).json({ error: `No admin found with id=${adminId}` });
     }
-
-    
     if (req.user.role === "admin" && req.user.id !== Number(adminId)) {
-      return res.status(403).json({ error: "Access denied" });
+      return res.status(403).json({ error: "You do not have permission to view this admin’s info" });
     }
-
     res.json(admin);
-  } catch (error) {
-    console.error("❌ Error fetching admin info:", error);
-    res.status(500).json({ error: "Server error" });
+  } catch (err) {
+    console.error("❌ Error fetching admin info:", err);
+    res.status(500).json({ error: "Internal server error while fetching admin info" });
   }
 };
 
@@ -31,20 +26,17 @@ export const getAdminInfo = async (req, res) => {
 export const getAdminTeachers = async (req, res) => {
   try {
     const { adminId } = req.params;
-
     if (req.user.role !== "admin" || req.user.adminId !== Number(adminId)) {
-      return res.status(403).json({ error: "Access denied" });
+      return res.status(403).json({ error: "You are not authorized to view these teachers" });
     }
-
     const teachers = await User.findAll({
       where: { adminId, role: "teacher" },
       attributes: ["id", "name", "email"],
     });
-
     res.json(teachers);
-  } catch (error) {
-    console.error("❌ Error:", error);
-    res.status(500).json({ error: "Error" });
+  } catch (err) {
+    console.error("❌ Error fetching admin's teachers:", err);
+    res.status(500).json({ error: "Internal server error while fetching teachers" });
   }
 };
 
@@ -53,75 +45,55 @@ export const updateStudentByAdmin = async (req, res) => {
   try {
     const { studentId } = req.params;
     const { name, email, classIds = [], teacherIds = [] } = req.body;
-
     const student = await Student.findByPk(studentId);
     if (!student) {
-      return res.status(404).json({ error: "Student not found" });
+      return res.status(404).json({ error: `No student found with id=${studentId}` });
     }
-
-    
     if (email && email !== student.email) {
-      const duplicateStudent = await Student.findOne({ where: { email } });
-      if (duplicateStudent) {
-        return res.status(400).json({ error: "Email уже используется другим студентом" });
+      const dup = await Student.findOne({ where: { email } });
+      if (dup) {
+        return res.status(409).json({ error: "Email already in use by another student" });
       }
     }
-
-    if (name) student.name = name;
+    if (name)  student.name  = name;
     if (email) student.email = email;
     await student.save();
-
     if (Array.isArray(classIds)) {
-      const validClasses = await ClassMeeting.findAll({
-        where: { id: classIds },
-      });
-      await student.setClasses(validClasses);
+      const classes = await ClassMeeting.findAll({ where: { id: classIds } });
+      await student.setClasses(classes);
     }
-
     if (Array.isArray(teacherIds)) {
-      const validTeachers = await User.findAll({
-        where: {
-          id: teacherIds,
-          role: "teacher",
-        },
+      const teachers = await User.findAll({
+        where: { id: teacherIds, role: "teacher" },
       });
-      await student.setTeachers(validTeachers);
+      await student.setTeachers(teachers);
     }
-
-    res.json({ message: "Student updated by admin", student });
-  } catch (error) {
-    console.error("❌ Error updating student by admin:", error);
-    res.status(500).json({ error: error.message || "Server error" });
+    res.json({ message: "Student updated successfully", student });
+  } catch (err) {
+    console.error("❌ Error updating student by admin:", err);
+    res.status(500).json({ error: "Internal server error while updating student" });
   }
 };
-
 
 
 export const createStudentByAdmin = async (req, res) => {
   const { adminId } = req.params;
   const { name, email, password, classIds = [], teacherIds = [] } = req.body;
-
   try {
-    
-    const existingStudent = await Student.findOne({ where: { email } });
-    if (existingStudent) {
-      return res.status(400).json({ error: "A student with this email already exists" });
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "Name, email, and password are required" });
     }
-    
+    const exists = await Student.findOne({ where: { email } });
+    if (exists) {
+      return res.status(409).json({ error: "A student with this email already exists" });
+    }
     const newStudent = await Student.create({ name, email, password });
-    
-    if (classIds.length > 0) {
-      await newStudent.setClasses(classIds);
-    }
-
-    if (teacherIds.length > 0) {
-      await newStudent.setTeachers(teacherIds); 
-    }
-
+    if (classIds.length)   await newStudent.setClasses(classIds);
+    if (teacherIds.length) await newStudent.setTeachers(teacherIds);
     res.status(201).json(newStudent);
-  } catch (error) {
-    console.error("Error creating student by admin:", error);
-    res.status(500).json({ error: "Server error" });
+  } catch (err) {
+    console.error("❌ Error creating student by admin:", err);
+    res.status(500).json({ error: "Internal server error while creating student" });
   }
 };
 
@@ -129,44 +101,36 @@ export const createStudentByAdmin = async (req, res) => {
 
 export const createClassByAdmin = async (req, res) => {
   try {
-    const { className, meetingId, teacherId, studentIds } = req.body;
-
-    if (req.user.role !== "admin") return res.status(403).json({ error: "Access denied" });
-
-    let teacher = null;
-    let teacherName = null;
-    let classUrl = null;
-
-    if (teacherId) {
-      teacher = await User.findByPk(teacherId);
-      if (!teacher || teacher.role !== "teacher" || teacher.adminId !== req.user.adminId) {
-        return res.status(403).json({ error: "Invalid teacher ID or access denied" });
-      }
-
-      const slug = meetingId;
-      const teacherLastName = teacher.name.split(" ").slice(1).join(" ");
-      classUrl = `${slug}/${teacherLastName}/${className}`;
-      teacherName = teacher.name;
+    const { className, meetingId, teacherId, studentIds = [] } = req.body;
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ error: "You are not authorized to create classes" });
     }
-
+    if (!className || !meetingId) {
+      return res.status(400).json({ error: "className and meetingId are required" });
+    }
+    let teacherName = null, classUrl = null;
+    if (teacherId) {
+      const teacher = await User.findByPk(teacherId);
+      if (!teacher || teacher.role !== "teacher" || teacher.adminId !== req.user.adminId) {
+        return res.status(403).json({ error: "Invalid teacherId or access denied" });
+      }
+      const slug = meetingId;
+      const lastName = teacher.name.split(" ").slice(1).join(" ");
+      teacherName = teacher.name;
+      classUrl = `${slug}/${lastName}/${className}`;
+    }
     const newClass = await ClassMeeting.create({
-      className,
-      meetingId,
-      slug: meetingId,
-      classUrl,
-      teacherId: teacherId || null,
-      teacherName: teacherName || null,
+      className, meetingId, slug: meetingId,
+      classUrl, teacherId: teacherId || null, teacherName,
     });
-
-    if (studentIds && Array.isArray(studentIds)) {
+    if (studentIds.length) {
       const students = await Student.findAll({ where: { id: studentIds } });
       await newClass.addStudents(students);
     }
-
     res.status(201).json(newClass);
-  } catch (error) {
-    console.error("❌ Error:", error);
-    res.status(500).json({ error: "Error" });
+  } catch (err) {
+    console.error("❌ Error creating class by admin:", err);
+    res.status(500).json({ error: "Internal server error while creating class" });
   }
 };
 
@@ -174,46 +138,40 @@ export const createClassByAdmin = async (req, res) => {
 export const deleteClassByAdmin = async (req, res) => {
   try {
     const { classId } = req.params;
-
-    if (req.user.role !== "admin") return res.status(403).json({ error: "Access denied" });
-
-    const classInstance = await ClassMeeting.findByPk(classId);
-    if (!classInstance) return res.status(404).json({ error: "Class not found" });
-
-    const teacher = await User.findByPk(classInstance.teacherId);
-    if (!teacher || teacher.adminId !== req.user.adminId) {
-      return res.status(403).json({ error: "Access denied" });
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ error: "You are not authorized to delete classes" });
     }
-
-    await classInstance.destroy();
-    res.json({ message: "Class deleted" });
-  } catch (error) {
-    console.error("❌ Error:", error);
-    res.status(500).json({ error: "Error" });
+    const cls = await ClassMeeting.findByPk(classId);
+    if (!cls) {
+      return res.status(404).json({ error: `No class found with id=${classId}` });
+    }
+    const teacher = await User.findByPk(cls.teacherId);
+    if (!teacher || teacher.adminId !== req.user.adminId) {
+      return res.status(403).json({ error: "You do not have permission to delete this class" });
+    }
+    await cls.destroy();
+    res.json({ message: "Class deleted successfully" });
+  } catch (err) {
+    console.error("❌ Error deleting class by admin:", err);
+    res.status(500).json({ error: "Internal server error while deleting class" });
   }
 };
 
 
 export const deleteStudentByAdmin = async (req, res) => {
   const { studentId } = req.params;
-
   try {
     const student = await Student.findByPk(studentId);
     if (!student) {
-      return res.status(404).json({ message: "Student not found" });
+      return res.status(404).json({ error: `No student found with id=${studentId}` });
     }
-
-
     await ClassStudent.destroy({ where: { studentId } });
     await StudentTeacher.destroy({ where: { studentId } });
-
-    
     await student.destroy();
-
     res.json({ message: "Student deleted successfully" });
   } catch (err) {
-    console.error("❌ Error deleting student:", err);
-    res.status(500).json({ message: "Server error" });
+    console.error("❌ Error deleting student by admin:", err);
+    res.status(500).json({ error: "Internal server error while deleting student" });
   }
 };
 
@@ -221,19 +179,18 @@ export const deleteStudentByAdmin = async (req, res) => {
 export const deleteTeacherByAdmin = async (req, res) => {
   try {
     const { teacherId } = req.params;
-
-    if (req.user.role !== "admin") return res.status(403).json({ error: "Access denied" });
-
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ error: "You are not authorized to delete teachers" });
+    }
     const teacher = await User.findByPk(teacherId);
     if (!teacher || teacher.role !== "teacher" || teacher.adminId !== req.user.adminId) {
-      return res.status(403).json({ error: "Access denied" });
+      return res.status(403).json({ error: "Invalid teacherId or access denied" });
     }
-
     await teacher.destroy();
-    res.json({ message: "Deleted" });
-  } catch (error) {
-    console.error("❌ Error:", error);
-    res.status(500).json({ error: "Error" });
+    res.json({ message: "Teacher deleted successfully" });
+  } catch (err) {
+    console.error("❌ Error deleting teacher by admin:", err);
+    res.status(500).json({ error: "Internal server error while deleting teacher" });
   }
 };
 
@@ -241,108 +198,77 @@ export const deleteTeacherByAdmin = async (req, res) => {
 export const createTeacherByAdmin = async (req, res) => {
   const { adminId } = req.params;
   const { name, email, password, classIds = [], studentIds = [] } = req.body;
-
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "Name, email and password are required" });
+    }
+    const hashed = await bcrypt.hash(password, 10);
     const newTeacher = await User.create({
-      name,
-      email,
-      password: hashedPassword, 
-      role: "teacher",
-      adminId,
+      name, email, password: hashed, role: "teacher", adminId,
     });
-
-    if (classIds.length > 0) {
-      await newTeacher.setLessons(classIds);
+    if (classIds.length)   await newTeacher.setLessons(classIds);
+    if (studentIds.length) await newTeacher.setStudents(studentIds);
+    res.status(201).json(newTeacher);
+  } catch (err) {
+    console.error("❌ Error creating teacher by admin:", err);
+    if (err.name === "SequelizeUniqueConstraintError") {
+      return res.status(409).json({ error: "Email already exists" });
     }
-
-    if (studentIds.length > 0) {
-      await newTeacher.setStudents(studentIds);
-    }
-
-    return res.status(201).json(newTeacher);
-
-  } catch (error) {
-    console.error("❌ Error creating teacher by admin:", error);
-    if (error.name === "SequelizeUniqueConstraintError") {
-      return res.status(400).json({ error: "Email already exists." });
-    }
-
- 
-    return res.status(500).json({ error: "Server error while creating teacher" });
+    res.status(500).json({ error: "Internal server error while creating teacher" });
   }
 };
+
 
 
 
 export const getAdminClasses = async (req, res) => {
   try {
     const { adminId } = req.params;
-
     if (req.user.role !== "admin" || req.user.adminId !== Number(adminId)) {
-      return res.status(403).json({ error: "Access denied" });
+      return res.status(403).json({ error: "You are not authorized to view these classes" });
     }
-
-    const teachers = await User.findAll({
-      where: { adminId, role: "teacher" },
-      attributes: ["id"],
-    });
-
-    const teacherIds = teachers.map((t) => t.id);
-
+    const teachers = await User.findAll({ where: { adminId, role: "teacher" }, attributes: ["id"] });
+    const teacherIds = teachers.map(t => t.id);
     const classes = await ClassMeeting.findAll({
       where: { teacherId: teacherIds },
       include: [
-        { model: User, as: "teacher", attributes: ["name", "email"] },
-        { model: Student, as: "students", through: { attributes: [] }, attributes: ["name", "email"] },
+        { model: User, as: "teacher", attributes: ["name","email"] },
+        { model: Student, as: "students", through:{attributes:[]}, attributes:["name","email"] }
       ],
     });
-
     res.json(classes);
-  } catch (error) {
-    console.error("❌ Error:", error);
-    res.status(500).json({ error: "Error" });
+  } catch (err) {
+    console.error("❌ Error fetching admin classes:", err);
+    res.status(500).json({ error: "Internal server error while fetching classes" });
   }
 };
 
 export const getAdminStudents = async (req, res) => {
   try {
     const { adminId } = req.params;
-
     if (req.user.role !== "admin" || req.user.adminId !== Number(adminId)) {
-      return res.status(403).json({ error: "Access denied" });
+      return res.status(403).json({ error: "You are not authorized to view these students" });
     }
-
-    const teachers = await User.findAll({
-      where: { adminId, role: "teacher" },
-      attributes: ["id"],
-    });
-
-    const teacherIds = teachers.map((t) => t.id);
-
+    const teachers = await User.findAll({ where: { adminId, role: "teacher" }, attributes:["id"] });
+    const teacherIds = teachers.map(t => t.id);
     const students = await Student.findAll({
       include: [
         {
-          model: User,
-          as: "teachers",
-          attributes: ["id", "name", "email"],
+          model: User, as: "teachers",
           where: { id: teacherIds },
-          through: { attributes: [] },
+          attributes: ["id","name","email"],
+          through:{attributes:[]}
         },
         {
-          model: ClassMeeting,
-          as: "classes",
+          model: ClassMeeting, as: "classes",
           attributes: ["className"],
-          through: { attributes: [] },
-        },
+          through:{attributes:[]}
+        }
       ],
     });
-    
-
     res.json(students);
-  } catch (error) {
-    console.error("❌ Error:", error);
-    res.status(500).json({ error: "Error" });
+  } catch (err) {
+    console.error("❌ Error fetching admin students:", err);
+    res.status(500).json({ error: "Internal server error while fetching students" });
   }
 };

@@ -15,58 +15,37 @@ export const getTeacherByLessonId = async (req, res) => {
   try {
     const { lessonId } = req.params;
     const lesson = await ClassMeeting.findByPk(lessonId, {
-      include: {
-        model: User,
-        as: "teacher",
-        attributes: ["id", "name", "email"]
-      }
+      include: { model: User, as: "teacher", attributes: ["id","name","email"] }
     });
-
-    if (!lesson || !lesson.teacher) {
-      return res.status(404).json({ error: "Lesson or teacher not found" });
+    if (!lesson) {
+      return res.status(404).json({ error: `Lesson with id=${lessonId} not found` });
     }
-
+    if (!lesson.teacher) {
+      return res.status(404).json({ error: "Teacher not assigned to this lesson" });
+    }
     res.json(lesson.teacher);
-  } catch (error) {
-    console.error("❌ Error:", error);
-    res.status(500).json({ error: "Server error" });
+  } catch (err) {
+    return handleSequelizeError(err, res);
   }
 };
 
-
 export const getTeacherAdmin = async (req, res) => {
- 
   try {
     const { teacherId } = req.params;
-    
-
     const teacher = await User.findOne({ where: { id: teacherId, role: "teacher" } });
-    
     if (!teacher) {
-      
-      return res.status(404).json({ error: "Teacher not found" });
+      return res.status(404).json({ error: `Teacher with id=${teacherId} not found` });
     }
-
-    if (teacher.adminId) {
-      
-
-      const admin = await User.findOne({ where: { id: teacher.adminId, role: "admin" } });
-      
-      if (!admin) {
-        
-        return res.status(404).json({ error: "Admin not found" });
-      }
-      return res.json(admin);
-    } else {
-      
-      return res.status(404).json({ error: "Admin not found for teacher" });
+    if (!teacher.adminId) {
+      return res.status(404).json({ error: `No admin assigned to teacher id=${teacherId}` });
     }
-  } catch (error) {
-    console.error("Error in getTeacherAdmin:", error);
-    if (error.errors) {
-      console.error("Validation errors:", error.errors);
+    const admin = await User.findOne({ where: { id: teacher.adminId, role: "admin" } });
+    if (!admin) {
+      return res.status(404).json({ error: `Admin with id=${teacher.adminId} not found` });
     }
-    return res.status(500).json({ error: error.message });
+    res.json(admin);
+  } catch (err) {
+    return handleSequelizeError(err, res);
   }
 };
 
@@ -75,105 +54,90 @@ export const getTeacherAdmin = async (req, res) => {
 export const getAllTeachers = async (req, res) => {
   try {
     if (req.user.role !== "superadmin") {
-      return res.status(403).json({ error: "Access denied" });
+      return res.status(403).json({ error: "Only superadmin can view all teachers" });
     }
     const teachers = await User.findAll({ where: { role: "teacher" } });
-    const teachersWithCounts = await Promise.all(
-      teachers.map(async (teacher) => {
-        const numberOfClasses = await ClassMeeting.count({ where: { teacherId: teacher.id } });
-        const numberOfStudents = await Student.count({ where: { teacherId: teacher.id } });
-        const teacherJson = teacher.toJSON();
-        teacherJson.numberOfClasses = numberOfClasses;
-        teacherJson.numberOfStudents = numberOfStudents;
-        return teacherJson;
-      })
-    );
-    res.json(teachersWithCounts);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const result = await Promise.all(teachers.map(async t => {
+      const classes = await ClassMeeting.count({ where: { teacherId: t.id } });
+      const students = await StudentTeacher.count({ where: { teacherId: t.id } });
+      return { ...t.toJSON(), numberOfClasses: classes, numberOfStudents: students };
+    }));
+    res.json(result);
+  } catch (err) {
+    return handleSequelizeError(err, res);
   }
 };
-
 export const deleteLesson = async (req, res) => {
   try {
     const { lessonId } = req.params;
     const lesson = await ClassMeeting.findByPk(lessonId);
-    if (!lesson) return res.status(404).json({ error: "Lesson not found" });
-
-    if (!isAuthorized(req.user, lesson)) {
-      return res.status(403).json({ error: "Access denied" });
+    if (!lesson) {
+      return res.status(404).json({ error: `Lesson with id=${lessonId} not found` });
     }
-
+    if (!isAuthorized(req.user, lesson)) {
+      return res.status(403).json({ error: "You do not have permission to delete this lesson" });
+    }
     await lesson.setStudents([]);
     await lesson.destroy();
-
-    res.status(200).json({ message: "Lesson and student associations deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json({ message: "Lesson deleted and student links removed" });
+  } catch (err) {
+    return handleSequelizeError(err, res);
   }
 };
 
 export const createLesson = async (req, res) => {
   try {
-    const { className, slug, teacherEmail, studentIds } = req.body;
+    const { className, slug, teacherEmail, studentIds = [] } = req.body;
     if (!className || !slug || !teacherEmail) {
-      return res.status(400).json({ error: "Class name, slug and teacherEmail are required" });
+      return res.status(400).json({
+        error: "Missing required fields: className, slug, teacherEmail"
+      });
     }
-
     const teacher = await User.findOne({ where: { email: teacherEmail, role: "teacher" } });
-    if (!teacher) return res.status(404).json({ error: "Teacher not found" });
-
-  
-    const nameParts = teacher.name.includes("_")
+    if (!teacher) {
+      return res.status(404).json({ error: `Teacher with email="${teacherEmail}" not found` });
+    }
+    const [_, identifier="teacher"] = teacher.name.includes("_")
       ? teacher.name.split("_")
       : teacher.name.split(" ");
-    const teacherIdentifier = nameParts[1] || nameParts[0]; 
-
-    const formattedClassName = className.trim().replace(/\s+/g, "_");
-    const classUrl = `${slug}/${teacherIdentifier}/${formattedClassName}`;
+    const formatted = className.trim().replace(/\s+/g, "_");
+    const classUrl = `${slug}/${identifier}/${formatted}`;
 
     const newClass = await ClassMeeting.create({
-      className,
-      teacherId: teacher.id,
-      teacherName: teacher.name,
-      slug,
-      classUrl,
+      className, slug, teacherId: teacher.id, teacherName: teacher.name, classUrl
     });
-
-    if (Array.isArray(studentIds) && studentIds.length > 0) {
+    if (studentIds.length) {
       const students = await Student.findAll({ where: { id: studentIds } });
       await newClass.addStudents(students);
     }
-
     res.status(201).json(newClass);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    return handleSequelizeError(err, res);
   }
 };
-
 
 
 
 
 export const createTeacher = async (req, res) => {
   try {
-    if (req.user.role !== "superadmin" && req.user.role !== "admin") {
-      return res.status(403).json({ error: "Access denied" });
+    if (!["superadmin","admin"].includes(req.user.role)) {
+      return res.status(403).json({ error: "Only admin or superadmin can create teachers" });
     }
     const { teacherName, teacherEmail, teacherPassword } = req.body;
     if (!teacherName || !teacherEmail || !teacherPassword) {
-      return res.status(400).json({ error: "All fields are required" });
+      return res.status(400).json({
+        error: "Missing required fields: teacherName, teacherEmail, teacherPassword"
+      });
     }
+    const hashed = await bcrypt.hash(teacherPassword, 10);
     const teacher = await User.create({
-      name: teacherName,
-      email: teacherEmail,
-      password: teacherPassword,
-      role: "teacher",
-      adminId: req.user.adminId || null
+      name: teacherName, email: teacherEmail,
+      password: hashed, role: "teacher", adminId: req.user.adminId || null
     });
     res.status(201).json(teacher);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    return handleSequelizeError(err, res);
   }
 };
 
@@ -220,18 +184,14 @@ export const deleteTeacher = async (req, res) => {
 export const getAllClasses = async (req, res) => {
   try {
     const classes = await ClassMeeting.findAll();
-    const filtered = classes.filter((cls) => isAuthorized(req.user, cls));
-    const classesWithCounts = await Promise.all(
-      filtered.map(async (cls) => {
-        const count = await cls.countStudents();
-        const clsJson = cls.toJSON();
-        clsJson.numberOfStudents = count;
-        return clsJson;
-      })
-    );
-    res.json(classesWithCounts);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const filtered = classes.filter(c => isAuthorized(req.user, c));
+    const result = await Promise.all(filtered.map(async c => {
+      const count = await c.countStudents();
+      return { ...c.toJSON(), numberOfStudents: count };
+    }));
+    res.json(result);
+  } catch (err) {
+    return handleSequelizeError(err, res);
   }
 };
 
@@ -239,13 +199,13 @@ export const createClass = async (req, res) => {
   try {
     const { className, teacherId } = req.body;
     if (!className || !teacherId) {
-      return res.status(400).json({ error: "Class name and teacher are required" });
+      return res.status(400).json({ error: "Missing required: className, teacherId" });
     }
     const meetingId = Math.random().toString(36).substring(2, 11);
-    const newClass = await ClassMeeting.create({ className, teacherId, meetingId });
-    res.status(201).json(newClass);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const cls = await ClassMeeting.create({ className, teacherId, meetingId });
+    res.status(201).json(cls);
+  } catch (err) {
+    return handleSequelizeError(err, res);
   }
 };
 
@@ -253,16 +213,16 @@ export const deleteClass = async (req, res) => {
   try {
     const { id } = req.params;
     const cls = await ClassMeeting.findByPk(id);
-    if (!cls) return res.status(404).json({ error: "Class not found" });
-
-    if (!isAuthorized(req.user, cls)) {
-      return res.status(403).json({ error: "Access denied" });
+    if (!cls) {
+      return res.status(404).json({ error: `Class with id=${id} not found` });
     }
-
+    if (!isAuthorized(req.user, cls)) {
+      return res.status(403).json({ error: "You do not have permission to delete this class" });
+    }
     await cls.destroy();
-    res.json({ message: "Class deleted" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json({ message: "Class deleted successfully" });
+  } catch (err) {
+    return handleSequelizeError(err, res);
   }
 };
 
@@ -271,35 +231,21 @@ export const getAllStudents = async (req, res) => {
   try {
     const students = await Student.findAll({
       include: [
-        {
-          model: User,
-          as: "teachers",
-          attributes: ["id", "name"],
-          through: { attributes: [] },
-        },
-        {
-          model: ClassMeeting,
-          as: "classes",
-          attributes: ["id", "className"],
-          through: { attributes: [] },
-        },
-      ],
+        { model: User, as: "teachers", attributes: ["id","name"], through:{attributes:[]} },
+        { model: ClassMeeting, as: "classes", attributes: ["id","className"], through:{attributes:[]} }
+      ]
     });
-
-    const filtered = students.filter((s) => isAuthorized(req.user, s));
-
-    const transformed = filtered.map((student) => {
-      const studentJson = student.toJSON();
-      studentJson.teacherNames = studentJson.teachers?.map(t => t.name) || [];
-      studentJson.classNames = studentJson.classes?.map(c => c.className) || [];
-      delete studentJson.teachers;
-      delete studentJson.classes;
-      return studentJson;
+    const filtered = students.filter(s => isAuthorized(req.user, s));
+    const result = filtered.map(s => {
+      const j = s.toJSON();
+      j.teacherNames = j.teachers.map(t=>t.name);
+      j.classNames = j.classes.map(c=>c.className);
+      delete j.teachers; delete j.classes;
+      return j;
     });
-
-    res.json(transformed);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json(result);
+  } catch (err) {
+    return handleSequelizeError(err, res);
   }
 };
 
@@ -409,82 +355,51 @@ export const getStudentsByTeacher = async (req, res) => {
 export const getTeacherById = async (req, res) => {
   try {
     const { teacherId } = req.params;
-
-    const teacher = await User.findOne({
-      where: { id: teacherId, role: "teacher" },
-    });
-
+    const teacher = await User.findOne({ where:{ id: teacherId, role:"teacher" } });
     if (!teacher) {
-      return res.status(404).json({ error: "Teacher not found" });
+      return res.status(404).json({ error: `Teacher with id=${teacherId} not found` });
     }
-
-    const numberOfClasses = await ClassMeeting.count({ where: { teacherId } });
-
-    
-    const numberOfStudents = await StudentTeacher.count({
-      where: { teacherId },
-    });
-
-    const teacherJson = teacher.toJSON();
-    teacherJson.numberOfClasses = numberOfClasses;
-    teacherJson.numberOfStudents = numberOfStudents;
-
-    res.json(teacherJson);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const classes = await ClassMeeting.count({ where:{ teacherId } });
+    const students = await StudentTeacher.count({ where:{ teacherId } });
+    res.json({ ...teacher.toJSON(), numberOfClasses: classes, numberOfStudents: students });
+  } catch (err) {
+    return handleSequelizeError(err, res);
   }
 };
 
 export const getTeacherLessons = async (req, res) => {
   try {
     const { teacherId } = req.params;
-
-    const lessons = await ClassMeeting.findAll({
-      where: { teacherId },
-    });
-
+    const lessons = await ClassMeeting.findAll({ where:{ teacherId } });
     res.json(lessons);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    return handleSequelizeError(err, res);
   }
 };
 
 export const getTeachers = async (req, res) => {
   try {
     const teachers = await User.findAll({
-      where: { role: "teacher" },
-      attributes: ["id", "name", "email"],
+      where:{ role:"teacher" }, attributes:["id","name","email"]
     });
-
     res.json(teachers);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    return handleSequelizeError(err, res);
   }
 };
-
 
 export const getStudentsByLesson = async (req, res) => {
   try {
     const { lessonId } = req.params;
-
     const lesson = await ClassMeeting.findByPk(lessonId, {
-      include: [
-        {
-          model: Student,
-          as: "students",
-          through: { attributes: [] }, 
-        },
-      ],
+      include:{ model:Student, as:"students", through:{attributes:[]} }
     });
-
     if (!lesson) {
-      return res.status(404).json({ error: "Lesson not found" });
+      return res.status(404).json({ error: `Lesson with id=${lessonId} not found` });
     }
-
     res.json(lesson.students);
-  } catch (error) {
-    console.error("❌ getStudentsByLesson error:", error);
-    res.status(500).json({ error: "Failed to fetch students for the lesson" });
+  } catch (err) {
+    return res.status(500).json({ error: "Failed to fetch students for this lesson" });
   }
 };
 
@@ -492,38 +407,24 @@ export const getStudentsByLesson = async (req, res) => {
 export const updateStudent = async (req, res) => {
   try {
     const { studentId } = req.params;
-    const { name, email, classIds = [] } = req.body;
-
+    const { name, email, classIds=[] } = req.body;
     const student = await Student.findByPk(studentId);
     if (!student) {
-      return res.status(404).json({ error: "Student not found" });
+      return res.status(404).json({ error: `Student with id=${studentId} not found` });
     }
-
     if (name) student.name = name;
     if (email) student.email = email;
-
-    await student.save(); 
-
+    await student.save();
     if (Array.isArray(classIds)) {
-      const validClasses = await ClassMeeting.findAll({
-        where: { id: classIds },
-      });
-      await student.setClasses(validClasses);
+      const valid = await ClassMeeting.findAll({ where:{ id:classIds } });
+      await student.setClasses(valid);
     }
-
-    res.json({
-      message: "Student updated successfully",
-      student,
-    });
-
-  } catch (error) {
-    console.error("❌ Error updating student:", error);
-
-    if (error.name === "SequelizeUniqueConstraintError") {
-      return res.status(400).json({ error: "Email already exists. Please use a different email." });
+    res.json({ message: "Student updated successfully", student });
+  } catch (err) {
+    if (err.name === "SequelizeUniqueConstraintError") {
+      return res.status(400).json({ error: "Email already exists. Use a different email." });
     }
-
-    res.status(500).json({ error: error.message || "Server error" });
+    return handleSequelizeError(err, res);
   }
 };
 
@@ -532,101 +433,66 @@ export const updateStudent = async (req, res) => {
 export const updateLesson = async (req, res) => {
   try {
     const { lessonId } = req.params;
-    const { className, meetingId, teacherId, studentIds } = req.body;
-
+    const { className, meetingId, teacherId, studentIds=[] } = req.body;
     const lesson = await ClassMeeting.findByPk(lessonId);
     if (!lesson) {
-      return res.status(404).json({ error: "Lesson not found" });
+      return res.status(404).json({ error: `Lesson with id=${lessonId} not found` });
     }
-
     if (className) lesson.className = className;
     if (meetingId) lesson.meetingId = meetingId;
     if (teacherId) lesson.teacherId = teacherId;
-
     await lesson.save();
-
-   
     if (Array.isArray(studentIds)) {
-      const validStudents = await Student.findAll({ where: { id: studentIds } });
-      await lesson.setStudents(validStudents);
+      const valid = await Student.findAll({ where:{ id:studentIds } });
+      await lesson.setStudents(valid);
     }
-
-    res.json({ message: "Lesson updated", lesson });
-  } catch (error) {
-    console.error("❌ Error updating lesson:", error);
-    res.status(500).json({ error: error.message });
+    res.json({ message: "Lesson updated successfully", lesson });
+  } catch (err) {
+    return handleSequelizeError(err, res);
   }
 };
 
+// UPDATE teacher
 export const updateTeacher = async (req, res) => {
   try {
     const { teacherId } = req.params;
-    const { name, email, password, classIds = [], studentIds = [] } = req.body;
-
+    const { name, email, password, classIds=[], studentIds=[] } = req.body;
     const teacher = await User.findOne({
-      where: { id: teacherId, role: "teacher" },
-      include: [{ model: Student, as: "students" }],
+      where:{ id:teacherId, role:"teacher" },
+      include:[{ model: Student, as:"students" }]
     });
-
     if (!teacher) {
-      return res.status(404).json({ error: "Teacher not found" });
+      return res.status(404).json({ error: `Teacher with id=${teacherId} not found` });
     }
-
-   
     if (!isAuthorized(req.user, teacher)) {
-      return res.status(403).json({ error: "Access denied" });
+      return res.status(403).json({ error: "You do not have permission to update this teacher" });
     }
-
-    
-    if (name && name.trim()) teacher.name = name.trim();
-    if (email && email.trim()) teacher.email = email.trim();
-
-    if (password !== undefined && password.trim()) {
-      const hashedPassword = await bcrypt.hash(password.trim(), 10);
-      teacher.password = hashedPassword;
-    }
-
- 
+    if (name) teacher.name = name.trim();
+    if (email) teacher.email = email.trim();
+    if (password) teacher.password = await bcrypt.hash(password.trim(), 10);
     await teacher.save();
-
-    
+    // classes reassignment
     if (Array.isArray(classIds)) {
-      const existingLessons = await ClassMeeting.findAll({ where: { teacherId: teacher.id } });
-      const existingIds = existingLessons.map((l) => l.id);
-
-      const toRemove = existingIds.filter((id) => !classIds.includes(id));
-      const toAdd = classIds.filter((id) => !existingIds.includes(id));
-
-      if (toRemove.length > 0) {
-        await ClassMeeting.update(
-          { teacherId: null },
-          { where: { id: toRemove } }
-        );
+      const existing = (await ClassMeeting.findAll({ where:{ teacherId } })).map(c=>c.id);
+      const toRemove = existing.filter(id => !classIds.includes(id));
+      const toAdd = classIds.filter(id => !existing.includes(id));
+      if (toRemove.length) {
+        await ClassMeeting.update({ teacherId: null }, { where:{ id:toRemove } });
       }
-
-      if (toAdd.length > 0) {
-        await ClassMeeting.update(
-          { teacherId: teacher.id },
-          { where: { id: toAdd } }
-        );
+      if (toAdd.length) {
+        await ClassMeeting.update({ teacherId }, { where:{ id:toAdd } });
       }
     }
-
-  
+    // students reassignment
     if (Array.isArray(studentIds)) {
-      const students = await Student.findAll({ where: { id: studentIds } });
-      await teacher.setStudents(students);
+      const studs = await Student.findAll({ where:{ id:studentIds } });
+      await teacher.setStudents(studs);
     }
-
-    res.json({ success: true, teacherId: teacher.id, teacher });
-  } catch (error) {
-    console.error("❌ Error updating teacher:", error);
-
-    if (error.name === "SequelizeUniqueConstraintError") {
-    
-      return res.status(400).json({ error: "Email already exists." });
+    res.json({ message: "Teacher updated successfully", teacher });
+  } catch (err) {
+    if (err.name === "SequelizeUniqueConstraintError") {
+      return res.status(400).json({ error: "Email already exists. Use a different email." });
     }
-
-    return res.status(500).json({ error: "Server error while updating teacher" });
+    return handleSequelizeError(err, res);
   }
 };

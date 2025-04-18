@@ -27,20 +27,21 @@ export const createAdmin = async (req, res) => {
 
   try {
     if (req.user.role !== "superadmin") {
-      return res.status(403).json({ error: "Access denied" });
+      return res.status(403).json({ error: "Only superadmin can create admins" });
     }
 
     if (!name || !email || !password || !schoolName) {
-      return res.status(400).json({ error: "All fields are required" });
+      return res.status(400).json({
+        error: "Missing required fields: name, email, password, schoolName"
+      });
     }
 
     const existing = await User.findOne({ where: { email } });
     if (existing) {
-      return res.status(409).json({ error: "Email already in use" });
+      return res.status(409).json({ error: `Email "${email}" is already registered` });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const newAdmin = await User.create({
       name,
       email,
@@ -49,15 +50,27 @@ export const createAdmin = async (req, res) => {
       schoolName,
     });
 
-    res.status(201).json({
-      message: "School Admin created successfully",
+    return res.status(201).json({
+      message: "School admin created successfully",
       admin: newAdmin,
     });
+
   } catch (err) {
     console.error("Error creating admin:", err);
-    res.status(500).json({ error: "Server error" });
+
+    if (err.name === "SequelizeValidationError") {
+      const msgs = err.errors.map(e => e.message).join("; ");
+      return res.status(400).json({ error: msgs });
+    }
+    if (err.name === "SequelizeUniqueConstraintError") {
+      const msgs = err.errors.map(e => e.message).join("; ");
+      return res.status(409).json({ error: msgs });
+    }
+
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
+
 
 export const updateAdmin = async (req, res) => {
   const { id } = req.params;
@@ -65,27 +78,37 @@ export const updateAdmin = async (req, res) => {
 
   try {
     if (req.user.role !== "superadmin") {
-      return res.status(403).json({ error: "Access denied" });
+      return res.status(403).json({ error: "Only superadmin can update admins" });
     }
 
     const admin = await User.findByPk(id);
     if (!admin || admin.role !== "admin") {
-      return res.status(404).json({ error: "School Admin not found" });
+      return res.status(404).json({ error: `Admin with id=${id} not found` });
     }
 
     admin.name = name ?? admin.name;
     admin.email = email ?? admin.email;
     admin.schoolName = schoolName ?? admin.schoolName;
-
     if (password) {
       admin.password = await bcrypt.hash(password, 10);
     }
 
     await admin.save();
-    res.json({ message: "School Admin updated", admin });
+    return res.json({ message: "School admin updated", admin });
+
   } catch (err) {
     console.error("Error updating admin:", err);
-    res.status(500).json({ error: "Server error" });
+
+    if (err.name === "SequelizeValidationError") {
+      const msgs = err.errors.map(e => e.message).join("; ");
+      return res.status(400).json({ error: msgs });
+    }
+    if (err.name === "SequelizeUniqueConstraintError") {
+      const msgs = err.errors.map(e => e.message).join("; ");
+      return res.status(409).json({ error: msgs });
+    }
+
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -112,20 +135,19 @@ export const deleteAdmin = async (req, res) => {
 };
 
 export const createTeacher = async (req, res) => {
+  const { teacherName, teacherEmail, teacherPassword } = req.body;
+
   try {
-    const { teacherName, teacherEmail, teacherPassword } = req.body;
-
     if (!teacherName || !teacherEmail || !teacherPassword) {
-      return res.status(400).json({ error: "Fill in all fields" });
+      return res.status(400).json({
+        error: "Missing required fields: teacherName, teacherEmail, teacherPassword"
+      });
     }
-
     if (req.user.role !== "admin" && req.user.role !== "superadmin") {
-      return res.status(403).json({ error: "Access denied" });
+      return res.status(403).json({ error: "Only admin or superadmin can create teachers" });
     }
 
-   
     const hashedPassword = await bcrypt.hash(teacherPassword, 10);
-
     const teacher = await User.create({
       name: teacherName,
       email: teacherEmail,
@@ -134,10 +156,17 @@ export const createTeacher = async (req, res) => {
       adminId: req.user.adminId || null
     });
 
-    res.status(201).json(teacher);
-  } catch (error) {
-    console.error("❌ Error creating teacher:", error);
-    res.status(500).json({ error: error.message });
+    return res.status(201).json(teacher);
+
+  } catch (err) {
+    console.error("Error creating teacher:", err);
+
+    if (err.name === "SequelizeUniqueConstraintError") {
+      return res
+        .status(409)
+        .json({ error: `Email "${req.body.teacherEmail}" already exists` });
+    }
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -182,51 +211,60 @@ export const getAllClasses = async (req, res) => {
 
 export const updateClass = async (req, res) => {
   const classId = req.params.id;
-  const { className, teacherId, studentIds, adminId } = req.body;
+  const { className, teacherId, studentIds } = req.body;
 
   try {
     const cls = await ClassMeeting.findByPk(classId);
     if (!cls) {
-      return res.status(404).json({ error: "Class not found" });
+      return res.status(404).json({ error: `Class with id=${classId} not found` });
     }
 
-    cls.className = className || cls.className;
-    cls.teacherId = teacherId || cls.teacherId;
-    cls.adminId = adminId || cls.adminId;
+    cls.className = className ?? cls.className;
+    cls.teacherId = teacherId ?? cls.teacherId;
+
     if (className || teacherId) {
-      const teacherLastName = (await cls.getTeacher()).name?.split(" ")[1] || "teacher";
-      const slug = cls.slug || "slug"; // оставить старый или сгенерировать заново
-      cls.classUrl = `/meet-${slug}/${teacherLastName}/${className}`;
+      const teacher = await cls.getTeacher();
+      const lastName = teacher?.name.split(" ")[1] || "teacher";
+      const slug = cls.slug;
+      cls.classUrl = `/meet-${slug}/${lastName}/${cls.className}`;
     }
 
     await cls.save();
 
     if (Array.isArray(studentIds)) {
-      await cls.setStudents(studentIds); 
+      await cls.setStudents(studentIds);
     }
 
-    res.json({ message: "Class updated successfully", class: cls });
-  } catch (error) {
-    console.error("❌ Failed to update class:", error);
-    res.status(500).json({ error: "Failed to update class" });
+    return res.json({ message: "Class updated successfully", class: cls });
+
+  } catch (err) {
+    console.error("Error updating class:", err);
+
+    if (err.name === "SequelizeValidationError") {
+      const msgs = err.errors.map(e => e.message).join("; ");
+      return res.status(400).json({ error: msgs });
+    }
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
 
 export const createClass = async (req, res) => {
-  try {
-    const { className, teacherId, studentIds } = req.body;
-    if (!className || !teacherId) {
-      return res.status(400).json({ error: "Fill in class name and select a teacher" });
-    }
+  const { className, teacherId, studentIds } = req.body;
 
+  try {
+    if (!className || !teacherId) {
+      return res.status(400).json({
+        error: "Missing required fields: className, teacherId"
+      });
+    }
     if (req.user.role !== "admin" && req.user.role !== "superadmin") {
-      return res.status(403).json({ error: "Access denied" });
+      return res.status(403).json({ error: "Only admin or superadmin can create classes" });
     }
 
     const teacher = await User.findByPk(teacherId);
     if (!teacher || teacher.role !== "teacher") {
-      return res.status(400).json({ error: "Invalid teacher ID" });
+      return res.status(400).json({ error: `Teacher with id=${teacherId} not found` });
     }
 
     const meetingId = Math.random().toString(36).substring(2, 11);
@@ -243,15 +281,21 @@ export const createClass = async (req, res) => {
       teacherName: teacher.name,
     });
 
-    if (studentIds && Array.isArray(studentIds)) {
+    if (Array.isArray(studentIds) && studentIds.length) {
       const students = await Student.findAll({ where: { id: studentIds } });
       await newClass.addStudents(students);
     }
 
-    res.status(201).json(newClass);
-  } catch (error) {
-    console.error("❌ Error:", error);
-    res.status(500).json({ error: error.message });
+    return res.status(201).json(newClass);
+
+  } catch (err) {
+    console.error("Error creating class:", err);
+
+    if (err.name === "SequelizeValidationError") {
+      const msgs = err.errors.map(e => e.message).join("; ");
+      return res.status(400).json({ error: msgs });
+    }
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -461,11 +505,18 @@ export const getTeacherDetails = async (req, res) => {
 
 
 export const createStudent = async (req, res) => {
-  try {
-    const { studentName, studentEmail, classIds = [], teacherIds = [] } = req.body;
+  const { studentName, studentEmail, classIds = [], teacherIds = [] } = req.body;
 
-    if (!studentName || !studentEmail || !Array.isArray(classIds) || !Array.isArray(teacherIds)) {
-      return res.status(400).json({ error: "Fill in name, email and select classes/teachers" });
+  try {
+    if (!studentName || !studentEmail) {
+      return res.status(400).json({
+        error: "Missing required fields: studentName, studentEmail"
+      });
+    }
+    if (!Array.isArray(classIds) || !Array.isArray(teacherIds)) {
+      return res.status(400).json({
+        error: "classIds and teacherIds must be arrays"
+      });
     }
 
     const student = await Student.create({ name: studentName, email: studentEmail });
@@ -474,18 +525,25 @@ export const createStudent = async (req, res) => {
       const classes = await ClassMeeting.findAll({ where: { id: classIds } });
       await student.addClasses(classes);
     }
-
     if (teacherIds.length) {
-      const teachers = await User.findAll({ where: { id: teacherIds, role: "teacher" } });
+      const teachers = await User.findAll({
+        where: { id: teacherIds, role: "teacher" }
+      });
       await student.addTeachers(teachers);
     }
 
-    res.status(201).json(student);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(201).json(student);
+
+  } catch (err) {
+    console.error("Error creating student:", err);
+
+    if (err.name === "SequelizeValidationError") {
+      const msgs = err.errors.map(e => e.message).join("; ");
+      return res.status(400).json({ error: msgs });
+    }
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
-
 
 
 export const deleteStudent = async (req, res) => {
