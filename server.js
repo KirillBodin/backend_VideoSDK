@@ -34,6 +34,7 @@ const allowedOrigins = [
   process.env.CLIENT_URL,
   "https://meet.tamamat.com",
   "https://t.me", 
+  "https://frontend-production-9845.up.railway.app",
   "https://web.telegram.org", 
 ];
 
