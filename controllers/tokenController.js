@@ -1,5 +1,16 @@
 import jwt from "jsonwebtoken";
 
+
+export const resetMeetingId = (req, res) => {
+  const { classUrl } = req.body;
+  if (global.meetingStore && global.meetingStore[classUrl]) {
+    delete global.meetingStore[classUrl];
+  }
+
+  res.sendStatus(200);
+};
+
+
 export const getToken = (req, res) => {
   try {
     const API_KEY = process.env.API_KEY;

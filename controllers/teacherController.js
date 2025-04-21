@@ -121,25 +121,38 @@ export const createLesson = async (req, res) => {
 
 export const createTeacher = async (req, res) => {
   try {
-    if (!["superadmin","admin"].includes(req.user.role)) {
+    if (!["superadmin", "admin"].includes(req.user.role)) {
       return res.status(403).json({ error: "Only admin or superadmin can create teachers" });
     }
+
     const { teacherName, teacherEmail, teacherPassword } = req.body;
+
     if (!teacherName || !teacherEmail || !teacherPassword) {
       return res.status(400).json({
         error: "Missing required fields: teacherName, teacherEmail, teacherPassword"
       });
     }
+
+    const existingTeacher = await User.findOne({ where: { email: teacherEmail } });
+    if (existingTeacher) {
+      return res.status(409).json({ error: `Teacher with email ${teacherEmail} already exists` });
+    }
+
     const hashed = await bcrypt.hash(teacherPassword, 10);
     const teacher = await User.create({
-      name: teacherName, email: teacherEmail,
-      password: hashed, role: "teacher", adminId: req.user.adminId || null
+      name: teacherName,
+      email: teacherEmail,
+      password: hashed,
+      role: "teacher",
+      adminId: req.user.adminId || null
     });
+
     res.status(201).json(teacher);
   } catch (err) {
     return handleSequelizeError(err, res);
   }
 };
+
 
 
 export const deleteTeacher = async (req, res) => {
@@ -259,18 +272,20 @@ export const createStudent = async (req, res) => {
     }
 
    
+    const existingStudent = await Student.findOne({ where: { email } });
+    if (existingStudent) {
+      return res.status(409).json({ error: `Student with email ${email} already exists` });
+    }
+
     const teacher = await User.findByPk(teacherId);
     if (!teacher || teacher.role !== "teacher") {
       return res.status(404).json({ error: "Teacher not found" });
     }
 
-   
     const student = await Student.create({ name, email });
 
-    
     await student.addTeacher(teacher);
 
-   
     if (Array.isArray(classIds) && classIds.length > 0) {
       const validClasses = await ClassMeeting.findAll({
         where: { id: classIds },
@@ -284,6 +299,7 @@ export const createStudent = async (req, res) => {
     res.status(500).json({ error: error.message || "Server error" });
   }
 };
+
 
 
 
@@ -405,9 +421,11 @@ export const getStudentsByLesson = async (req, res) => {
 
 
 export const updateStudent = async (req, res) => {
+  let emailStudent;
   try {
     const { studentId } = req.params;
     const { name, email, classIds=[] } = req.body;
+    emailStudent = email
     const student = await Student.findByPk(studentId);
     if (!student) {
       return res.status(404).json({ error: `Student with id=${studentId} not found` });
@@ -422,7 +440,7 @@ export const updateStudent = async (req, res) => {
     res.json({ message: "Student updated successfully", student });
   } catch (err) {
     if (err.name === "SequelizeUniqueConstraintError") {
-      return res.status(400).json({ error: "Email already exists. Use a different email." });
+      return res.status(400).json({ error: `A student with email ${emailStudent} already exists` });
     }
     return handleSequelizeError(err, res);
   }
@@ -454,9 +472,11 @@ export const updateLesson = async (req, res) => {
 
 // UPDATE teacher
 export const updateTeacher = async (req, res) => {
+  let emailTeacher;
   try {
     const { teacherId } = req.params;
     const { name, email, password, classIds=[], studentIds=[] } = req.body;
+    email = emailTeacher;
     const teacher = await User.findOne({
       where:{ id:teacherId, role:"teacher" },
       include:[{ model: Student, as:"students" }]
@@ -491,7 +511,7 @@ export const updateTeacher = async (req, res) => {
     res.json({ message: "Teacher updated successfully", teacher });
   } catch (err) {
     if (err.name === "SequelizeUniqueConstraintError") {
-      return res.status(400).json({ error: "Email already exists. Use a different email." });
+      return res.status(400).json({ error: `A teacher with email ${emailTeacher} already exists`});
     }
     return handleSequelizeError(err, res);
   }

@@ -52,7 +52,7 @@ export const updateStudentByAdmin = async (req, res) => {
     if (email && email !== student.email) {
       const dup = await Student.findOne({ where: { email } });
       if (dup) {
-        return res.status(409).json({ error: "Email already in use by another student" });
+        return res.status(409).json({ error: `A student with email ${email} already exists` });
       }
     }
     if (name)  student.name  = name;
@@ -78,16 +78,16 @@ export const updateStudentByAdmin = async (req, res) => {
 
 export const createStudentByAdmin = async (req, res) => {
   const { adminId } = req.params;
-  const { name, email, password, classIds = [], teacherIds = [] } = req.body;
+  const { name, email, classIds = [], teacherIds = [] } = req.body;
   try {
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: "Name, email, and password are required" });
+    if (!name || !email) {
+      return res.status(400).json({ error: "Name, email are required" });
     }
     const exists = await Student.findOne({ where: { email } });
     if (exists) {
-      return res.status(409).json({ error: "A student with this email already exists" });
+      return res.status(409).json({ error: `A student with email ${email} already exists` });
     }
-    const newStudent = await Student.create({ name, email, password });
+    const newStudent = await Student.create({ name, email });
     if (classIds.length)   await newStudent.setClasses(classIds);
     if (teacherIds.length) await newStudent.setTeachers(teacherIds);
     res.status(201).json(newStudent);
@@ -202,6 +202,12 @@ export const createTeacherByAdmin = async (req, res) => {
     if (!name || !email || !password) {
       return res.status(400).json({ error: "Name, email and password are required" });
     }
+
+    const exists = await User.findOne({ where: { email } });
+if (exists) {
+  return res.status(409).json({ error: `A teacher with this email ${email} already exists` });
+}
+
     const hashed = await bcrypt.hash(password, 10);
     const newTeacher = await User.create({
       name, email, password: hashed, role: "teacher", adminId,

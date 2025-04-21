@@ -1,7 +1,6 @@
-import User from "../models/User.js";
-import ClassMeeting from "../models/ClassMeeting.js";
-import Student from "../models/Student.js";
-import StudentTeacher from "../models/StudentTeacher.js";
+
+import { User, ClassMeeting, StudentTeacher,Student } from "../models/index.js"; 
+import { Op } from "sequelize";
 import bcrypt from "bcrypt";
 
 export const getAllTeachers = async (req, res) => {
@@ -38,7 +37,7 @@ export const createAdmin = async (req, res) => {
 
     const existing = await User.findOne({ where: { email } });
     if (existing) {
-      return res.status(409).json({ error: `Email "${email}" is already registered` });
+      return res.status(409).json({ error: `School Admin with email "${email}" is already exist` });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -85,6 +84,13 @@ export const updateAdmin = async (req, res) => {
     if (!admin || admin.role !== "admin") {
       return res.status(404).json({ error: `Admin with id=${id} not found` });
     }
+
+
+    const existing = await User.findOne({ where: { email, id: { [Op.ne]: id } } });
+    if (existing) {
+      return res.status(409).json({ error: `School Admin with email "${email}" already exists` });
+    }
+    
 
     admin.name = name ?? admin.name;
     admin.email = email ?? admin.email;
@@ -135,7 +141,7 @@ export const deleteAdmin = async (req, res) => {
 };
 
 export const createTeacher = async (req, res) => {
-  const { teacherName, teacherEmail, teacherPassword } = req.body;
+  const { teacherName, teacherEmail, teacherPassword, classIds = [], studentIds = [] } = req.body;
 
   try {
     if (!teacherName || !teacherEmail || !teacherPassword) {
@@ -143,11 +149,13 @@ export const createTeacher = async (req, res) => {
         error: "Missing required fields: teacherName, teacherEmail, teacherPassword"
       });
     }
+
     if (req.user.role !== "admin" && req.user.role !== "superadmin") {
       return res.status(403).json({ error: "Only admin or superadmin can create teachers" });
     }
 
     const hashedPassword = await bcrypt.hash(teacherPassword, 10);
+
     const teacher = await User.create({
       name: teacherName,
       email: teacherEmail,
@@ -156,19 +164,31 @@ export const createTeacher = async (req, res) => {
       adminId: req.user.adminId || null
     });
 
+    // ⬇️ Привязка уроков
+    if (Array.isArray(classIds) && classIds.length > 0) {
+      await teacher.setLessons(classIds);
+    }
+
+    // ⬇️ Привязка учеников
+    if (Array.isArray(studentIds) && studentIds.length > 0) {
+      await teacher.setStudents(studentIds);
+    }
+
     return res.status(201).json(teacher);
 
   } catch (err) {
-    console.error("Error creating teacher:", err);
+    console.error("❌ Error creating teacher:", err);
 
     if (err.name === "SequelizeUniqueConstraintError") {
       return res
         .status(409)
-        .json({ error: `Email "${req.body.teacherEmail}" already exists` });
+        .json({ error: `Email "${teacherEmail}" already exists` });
     }
+
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
 
 export const deleteTeacher = async (req, res) => {
   try {
@@ -415,6 +435,87 @@ export const getClassDetails = async (req, res) => {
   }
 };
 
+export const updateTeacher = async (req, res) => {
+  const {
+    id,
+    teacherName,
+    teacherEmail,
+    teacherPassword,
+    adminId,
+    classIds = [],
+    studentIds = [],
+  } = req.body;
+
+  try {
+    const teacher = await User.findByPk(id);
+    if (!teacher) {
+      return res.status(404).json({ error: "Teacher not found" });
+    }
+
+    const existing = await User.findOne({ where: { email: teacherEmail, id: { [Op.ne]: id } } });
+    if (existing) {
+      return res.status(409).json({ error: `Teacher with email "${teacherEmail}" already exists` });
+    }
+    
+
+    teacher.name = teacherName;
+    teacher.email = teacherEmail;
+    teacher.adminId = adminId;
+
+    if (teacherPassword && teacherPassword.trim()) {
+      const hashed = await bcrypt.hash(teacherPassword, 10);
+      teacher.password = hashed;
+    }
+
+    await teacher.save();
+
+    // ⬇️ Это вместо ручного обновления ClassMeeting
+    await teacher.setLessons(classIds);   // many-to-many через ClassMeeting.teacherId
+    await teacher.setStudents(studentIds); // many-to-many через StudentTeacher
+
+    res.json({ message: "Teacher updated successfully" });
+  } catch (err) {
+    console.error("❌ updateTeacher error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+
+export const updateStudent = async (req, res) => {
+  const { id } = req.params;
+  const { studentName, studentEmail, classIds, teacherIds } = req.body;
+  try {
+    const [firstName, ...rest] = studentName.split(" ");
+    const lastName = rest.join(" ");
+
+    const existing = await Student.findOne({ where: { email: studentEmail, id: { [Op.ne]: id } } });
+if (existing) {
+  return res.status(409).json({ error: `Student with email "${studentEmail}" already exists` });
+}
+
+
+    await Student.update({ name: studentName, email: studentEmail }, { where: { id } });
+
+    if (Array.isArray(classIds)) {
+      await ClassStudent.destroy({ where: { studentId: id } });
+      await Promise.all(classIds.map(classId =>
+        ClassStudent.create({ classId, studentId: id })
+      ));
+    }
+
+    if (Array.isArray(teacherIds)) {
+      await StudentTeacher.destroy({ where: { studentId: id } });
+      await Promise.all(teacherIds.map(teacherId =>
+        StudentTeacher.create({ teacherId, studentId: id })
+      ));
+    }
+
+    res.json({ message: "Student updated successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message || "Failed to update student" });
+  }
+};
 
 
 export const getStudentDetails = async (req, res) => {
@@ -430,7 +531,7 @@ export const getStudentDetails = async (req, res) => {
         {
           model: User,
           as: "teachers",
-          include: [{ model: User, as: "admin" }], // подключаем админа учителя
+          include: [{ model: User, as: "admin" }], 
           through: { attributes: [] }
         }
       ]
@@ -508,23 +609,32 @@ export const createStudent = async (req, res) => {
   const { studentName, studentEmail, classIds = [], teacherIds = [] } = req.body;
 
   try {
+    // Проверка обязательных полей
     if (!studentName || !studentEmail) {
       return res.status(400).json({
         error: "Missing required fields: studentName, studentEmail"
       });
     }
+
     if (!Array.isArray(classIds) || !Array.isArray(teacherIds)) {
       return res.status(400).json({
         error: "classIds and teacherIds must be arrays"
       });
     }
 
-    const student = await Student.create({ name: studentName, email: studentEmail });
+    // Создание студента
+    const student = await Student.create({
+      name: studentName,
+      email: studentEmail
+    });
 
+    // Привязка классов (если есть)
     if (classIds.length) {
       const classes = await ClassMeeting.findAll({ where: { id: classIds } });
       await student.addClasses(classes);
     }
+
+    // Привязка учителей (если есть)
     if (teacherIds.length) {
       const teachers = await User.findAll({
         where: { id: teacherIds, role: "teacher" }
@@ -541,9 +651,20 @@ export const createStudent = async (req, res) => {
       const msgs = err.errors.map(e => e.message).join("; ");
       return res.status(400).json({ error: msgs });
     }
+
+    if (err.name === "SequelizeUniqueConstraintError") {
+      const duplicateField = err?.errors?.[0]?.path;
+      return res.status(409).json({
+        error: duplicateField === "email"
+          ? `Student with email ${studentEmail} already exists`
+          : "Duplicate entry"
+      });
+    }
+
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
 
 
 export const deleteStudent = async (req, res) => {

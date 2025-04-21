@@ -18,6 +18,9 @@ import {
   getStudentDetails,
   updateClass,
   getAdminDetails,
+  updateTeacher,
+  updateStudent,
+
 } from "../controllers/superAdminController.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
@@ -50,5 +53,12 @@ router.get("/admins", authenticate, authorize("superadmin"),getAllAdmins);
 router.post("/admins", authenticate,authorize("superadmin"), createAdmin);
 router.put("/admins/:id", authenticate, authorize("superadmin"),updateAdmin);
 router.delete("/admins/:id", authenticate, authorize("superadmin"),deleteAdmin);
+
+
+router.put("/teachers/:id", authenticate, authorize("superadmin"), updateTeacher);
+
+
+router.put("/students/:id", authenticate, authorize("superadmin"), updateStudent);
+
 
 export default router;
