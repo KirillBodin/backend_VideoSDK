@@ -11,6 +11,11 @@ const isAuthorized = (user, entity) => {
 };
 
 
+function handleSequelizeError(err, res) {
+  return res.status(500).json({ error: err });
+}
+
+
 export const getTeacherByLessonId = async (req, res) => {
   try {
     const { lessonId } = req.params;
