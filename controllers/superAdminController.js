@@ -568,19 +568,15 @@ export const getTeacherDetails = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const teacher = await User.findByPk(id, {
-      where: { role: "teacher" }
-    });
+    const teacher = await User.findByPk(id);
 
     if (!teacher || teacher.role !== "teacher") {
       return res.status(404).json({ error: "Teacher not found" });
     }
 
-    
     const classes = await ClassMeeting.findAll({ where: { teacherId: id } });
     const classIds = classes.map(cls => cls.id);
 
-  
     const studentLinks = await StudentTeacher.findAll({ where: { teacherId: id } });
     const studentIds = studentLinks.map(link => link.studentId);
 
@@ -589,12 +585,20 @@ export const getTeacherDetails = async (req, res) => {
     const [firstName, ...lastParts] = name.split(" ");
     const lastName = lastParts.join(" ");
 
+    let adminName = null;
+    if (adminId) {
+      const admin = await User.findByPk(adminId);
+      if (admin && admin.role === "admin") {
+        adminName = admin.name;
+      }
+    }
+
     res.json({
       id,
       firstName,
       lastName,
       email,
-      adminId,
+      adminName,
       classIds,
       studentIds
     });
@@ -603,7 +607,6 @@ export const getTeacherDetails = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
-
 
 export const createStudent = async (req, res) => {
   const { studentName, studentEmail, classIds = [], teacherIds = [] } = req.body;
