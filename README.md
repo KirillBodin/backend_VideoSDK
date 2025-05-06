@@ -28,28 +28,8 @@ This is the backend service for a video conferencing and classroom platform buil
 
 ---
 
-## 📁 Project Structure
+<pre> ## 📁 Project Structure <code> backend/ ├── controllers/ │ ├── schoolAdminController.js │ ├── superAdminController.js │ ├── teacherController.js │ └── tokenController.js ├── routes/ │ ├── schoolAdminRoutes.js │ ├── superAdminRoutes.js │ ├── teacherRoutes.js │ └── tokenRoutes.js ├── models/ │ └── (Sequelize models) ├── config/ │ └── database.js ├── middlewares/ │ └── authMiddleware.js ├── server.js ├── .env └── README.md </code> </pre>
 
-backend/
-├── controllers/
-│   ├── schoolAdminController.js
-│   ├── superAdminController.js
-│   ├── teacherController.js
-│   └── tokenController.js
-├── routes/
-│   ├── schoolAdminRoutes.js
-│   ├── superAdminRoutes.js
-│   ├── teacherRoutes.js
-│   └── tokenRoutes.js
-├── models/
-│   └── (Sequelize models)
-├── config/
-│   └── database.js
-├── middlewares/
-│   └── authMiddleware.js
-├── server.js
-├── .env
-└── README.md
 
 
 
